@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SistemaEstoque.Api.Dtos.Produtos;
 using SistemaEstoque.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 
 namespace SistemaEstoque.Api.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class ProdutosController : ControllerBase

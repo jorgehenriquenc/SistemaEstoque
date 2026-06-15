@@ -21,5 +21,9 @@ namespace SistemaEstoque.Data.Context
 
         // Representa a tabela ItensPedido no banco
         public DbSet<ItemPedido> ItensPedido { get; set; }
+
+        // Nova tabela de usuários usada para autenticação JWT
+        public DbSet<Usuario> Usuarios { get; set; }
+
     }
 }

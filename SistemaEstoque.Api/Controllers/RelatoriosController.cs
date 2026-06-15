@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SistemaEstoque.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 
 namespace SistemaEstoque.Api.Controllers
 {
+    [Authorize]
     // Define a rota base: api/relatorios
     [Route("api/[controller]")]
 

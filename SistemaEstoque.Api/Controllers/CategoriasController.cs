@@ -2,9 +2,11 @@
 using SistemaEstoque.Api.Dtos.Categorias;
 using SistemaEstoque.Data.Context;
 using SistemaEstoque.Data.Entities;
+using Microsoft.AspNetCore.Authorization;
 
 namespace SistemaEstoque.Api.Controllers
 {
+    [Authorize]
     // Define a rota base: api/categorias
     [Route("api/[controller]")]
 

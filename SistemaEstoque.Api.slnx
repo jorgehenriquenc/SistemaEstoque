@@ -1,4 +1,8 @@
 <Solution>
+  <Folder Name="/Itens de Solução/">
+    <File Path=".gitignore" />
+    <File Path="README.md" />
+  </Folder>
   <Project Path="SistemaEstoque.Api/SistemaEstoque.Api.csproj" />
   <Project Path="SistemaEstoque.Data/SistemaEstoque.Data.csproj" />
 </Solution>

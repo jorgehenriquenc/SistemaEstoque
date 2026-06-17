@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using SistemaEstoque.Api.Services;
 using SistemaEstoque.Data.Context;
 using SistemaEstoque.Data.Repositories.Implementations;
@@ -16,21 +17,12 @@ namespace SistemaEstoque.Api
             var builder = WebApplication.CreateBuilder(args);
 
             // Adiciona suporte aos Controllers da API.
-            // Sem isso, os controllers como ProdutosController, CategoriasController,
-            // PedidosController e AuthController não funcionam.
             builder.Services.AddControllers();
 
             // Permite que o Swagger encontre os endpoints da API.
             builder.Services.AddEndpointsApiExplorer();
 
-            // Configura o Swagger básico.
-            // Neste momento NÃO vamos configurar o botão Authorize aqui,
-            // porque o seu projeto está com conflito no pacote Microsoft.OpenApi.
-            // O JWT vai funcionar mesmo sem esse botão.
-            builder.Services.AddSwaggerGen();
-
             // Configura o Entity Framework Core com SQL Server LocalDB.
-            // Esse banco é o mesmo que você já estava usando no projeto.
             builder.Services.AddDbContext<AppDbContext>(options =>
             {
                 options.UseSqlServer(
@@ -39,25 +31,18 @@ namespace SistemaEstoque.Api
             });
 
             // Registra os Services da aplicação.
-            // Service é onde ficam as regras de negócio.
             builder.Services.AddScoped<CategoriaService>();
             builder.Services.AddScoped<ProdutoService>();
             builder.Services.AddScoped<PedidoService>();
-
-            // Service responsável por cadastro, login, senha com hash e geração do token JWT.
             builder.Services.AddScoped<AuthService>();
 
             // Registra os Repositories da aplicação.
-            // Repository é a camada que conversa com o banco de dados.
             builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
             builder.Services.AddScoped<IProdutoRepository, ProdutoRepository>();
             builder.Services.AddScoped<IPedidoRepository, PedidoRepository>();
-
-            // Repository de usuários usado no login e cadastro.
             builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 
-            // Busca a chave JWT no appsettings.json.
-            // Essa chave será usada para assinar e validar os tokens.
+            // Busca a chave JWT configurada no appsettings.json.
             var jwtKey = builder.Configuration["Jwt:Key"];
 
             if (string.IsNullOrWhiteSpace(jwtKey))
@@ -65,8 +50,7 @@ namespace SistemaEstoque.Api
                 throw new Exception("A chave JWT não foi configurada no appsettings.json.");
             }
 
-            // Configura a autenticação com JWT.
-            // Isso permite que a API reconheça tokens enviados no header Authorization.
+            // Configura autenticação JWT.
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -74,42 +58,55 @@ namespace SistemaEstoque.Api
             })
             .AddJwtBearer(options =>
             {
-                // Em desenvolvimento local, podemos deixar false.
-                // Em produção, normalmente ficaria true.
                 options.RequireHttpsMetadata = false;
-
-                // Permite salvar o token no contexto da requisição.
                 options.SaveToken = true;
 
-                // Define as regras de validação do token.
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    // Valida quem gerou o token.
                     ValidateIssuer = true,
-
-                    // Valida para quem o token foi criado.
                     ValidateAudience = true,
-
-                    // Valida se o token ainda não expirou.
                     ValidateLifetime = true,
-
-                    // Valida se a chave usada para assinar o token é correta.
                     ValidateIssuerSigningKey = true,
 
-                    // Valores esperados, vindos do appsettings.json.
                     ValidIssuer = builder.Configuration["Jwt:Issuer"],
                     ValidAudience = builder.Configuration["Jwt:Audience"],
 
-                    // Chave secreta usada para validar a assinatura do token.
                     IssuerSigningKey = new SymmetricSecurityKey(
                         Encoding.UTF8.GetBytes(jwtKey)
                     )
                 };
             });
 
-            // Adiciona autorização.
-            // Isso permite usar [Authorize] nos controllers.
+            // Permite usar [Authorize] nos Controllers.
             builder.Services.AddAuthorization();
+
+            // Configura Swagger com botão Authorize compatível com Swashbuckle 10.
+            builder.Services.AddSwaggerGen(options =>
+            {
+                options.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = "SistemaEstoque API",
+                    Version = "v1",
+                    Description = "API REST para gerenciamento de estoque com autenticação JWT."
+                });
+
+                // Define autenticação Bearer JWT.
+                // Com Type = Http e Scheme = bearer, o Swagger coloca o prefixo Bearer automaticamente.
+                options.AddSecurityDefinition("bearer", new OpenApiSecurityScheme
+                {
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    Description = "Cole apenas o token JWT. Não precisa escrever Bearer antes."
+                });
+
+                // Aplica o esquema de segurança nas rotas protegidas.
+                // No Swashbuckle 10, usa OpenApiSecuritySchemeReference.
+                options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+                {
+                    [new OpenApiSecuritySchemeReference("bearer", document)] = []
+                });
+            });
 
             var app = builder.Build();
 
@@ -122,10 +119,10 @@ namespace SistemaEstoque.Api
 
             app.UseHttpsRedirection();
 
-            // Primeiro a API tenta autenticar o usuário pelo token.
+            // Primeiro autentica o token.
             app.UseAuthentication();
 
-            // Depois ela verifica se o usuário tem permissão para acessar a rota.
+            // Depois verifica o [Authorize].
             app.UseAuthorization();
 
             app.MapControllers();

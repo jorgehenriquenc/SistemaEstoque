@@ -22,12 +22,20 @@ namespace SistemaEstoque.Api
             // Permite que o Swagger encontre os endpoints da API.
             builder.Services.AddEndpointsApiExplorer();
 
-            // Configura o Entity Framework Core com SQL Server LocalDB.
+            // Busca a connection string chamada "DefaultConnection".
+            // Localmente, ela vem do appsettings.json.
+            // Na Azure, ela virá das configurações do App Service.
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new Exception("A connection string 'DefaultConnection' não foi configurada.");
+            }
+
+            // Configura o Entity Framework Core com SQL Server.
             builder.Services.AddDbContext<AppDbContext>(options =>
             {
-                options.UseSqlServer(
-                    "Server=(localdb)\\mssqllocaldb;Database=SistemaEstoqueDb;Trusted_Connection=True;TrustServerCertificate=True;"
-                );
+                options.UseSqlServer(connectionString);
             });
 
             // Registra os Services da aplicação.

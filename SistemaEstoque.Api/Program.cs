@@ -32,10 +32,10 @@ namespace SistemaEstoque.Api
                 throw new Exception("A connection string 'DefaultConnection' não foi configurada.");
             }
 
-            // Configura o Entity Framework Core com SQL Server.
+            // Configura o Entity Framework Core com PostgreSQL/Neon
             builder.Services.AddDbContext<AppDbContext>(options =>
             {
-                options.UseSqlServer(connectionString);
+                options.UseNpgsql(connectionString);
             });
 
             // Registra os Services da aplicação.

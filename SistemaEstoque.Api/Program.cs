@@ -23,7 +23,7 @@ namespace SistemaEstoque.Api
             builder.Services.AddEndpointsApiExplorer();
 
             // Busca a connection string chamada "DefaultConnection".
-            // Localmente, ela vem do appsettings.json.
+            // Localmente, ela vem do appsettings.json ou user-secrets.
             // Na Azure, ela virá das configurações do App Service.
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
@@ -32,7 +32,7 @@ namespace SistemaEstoque.Api
                 throw new Exception("A connection string 'DefaultConnection' não foi configurada.");
             }
 
-            // Configura o Entity Framework Core com PostgreSQL/Neon
+            // Configura o Entity Framework Core com PostgreSQL/Neon.
             builder.Services.AddDbContext<AppDbContext>(options =>
             {
                 options.UseNpgsql(connectionString);
@@ -50,12 +50,26 @@ namespace SistemaEstoque.Api
             builder.Services.AddScoped<IPedidoRepository, PedidoRepository>();
             builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 
-            // Busca a chave JWT configurada no appsettings.json.
+            // Busca as configurações JWT.
+            // Localmente, elas podem vir do appsettings.json ou user-secrets.
+            // Na Azure, elas podem vir das Environment Variables do App Service.
             var jwtKey = builder.Configuration["Jwt:Key"];
+            var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+            var jwtAudience = builder.Configuration["Jwt:Audience"];
 
             if (string.IsNullOrWhiteSpace(jwtKey))
             {
-                throw new Exception("A chave JWT não foi configurada no appsettings.json.");
+                throw new Exception("A configuração JWT 'Jwt:Key' não foi configurada.");
+            }
+
+            if (string.IsNullOrWhiteSpace(jwtIssuer))
+            {
+                throw new Exception("A configuração JWT 'Jwt:Issuer' não foi configurada.");
+            }
+
+            if (string.IsNullOrWhiteSpace(jwtAudience))
+            {
+                throw new Exception("A configuração JWT 'Jwt:Audience' não foi configurada.");
             }
 
             // Configura autenticação JWT.
@@ -66,7 +80,7 @@ namespace SistemaEstoque.Api
             })
             .AddJwtBearer(options =>
             {
-                options.RequireHttpsMetadata = false;
+                options.RequireHttpsMetadata = true;
                 options.SaveToken = true;
 
                 options.TokenValidationParameters = new TokenValidationParameters
@@ -76,8 +90,8 @@ namespace SistemaEstoque.Api
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
 
-                    ValidIssuer = builder.Configuration["Jwt:Issuer"],
-                    ValidAudience = builder.Configuration["Jwt:Audience"],
+                    ValidIssuer = jwtIssuer,
+                    ValidAudience = jwtAudience,
 
                     IssuerSigningKey = new SymmetricSecurityKey(
                         Encoding.UTF8.GetBytes(jwtKey)
@@ -109,7 +123,6 @@ namespace SistemaEstoque.Api
                 });
 
                 // Aplica o esquema de segurança nas rotas protegidas.
-                // No Swashbuckle 10, usa OpenApiSecuritySchemeReference.
                 options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
                 {
                     [new OpenApiSecuritySchemeReference("bearer", document)] = []
@@ -118,12 +131,13 @@ namespace SistemaEstoque.Api
 
             var app = builder.Build();
 
-            // Habilita Swagger em ambiente de desenvolvimento.
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
+            // Habilita Swagger também no Azure.
+            // Para projeto de portfólio, isso é útil porque permite testar a API publicada.
+            app.UseSwagger();
+            app.UseSwaggerUI();
+
+            // Quando abrir a URL principal da API, redireciona direto para o Swagger.
+            app.MapGet("/", () => Results.Redirect("/swagger"));
 
             app.UseHttpsRedirection();
 

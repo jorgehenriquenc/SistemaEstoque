@@ -4,90 +4,85 @@ using SistemaEstoque.Data.Repositories.Interfaces;
 
 namespace SistemaEstoque.Api.Services
 {
-    // Serviço responsável pelas regras de negócio de categorias
+    // Serviço responsável pelas regras de negócio de categorias.
     public class CategoriaService
     {
-        // Repositório usado para acessar os dados de categorias
+        // Repositório utilizado para acessar os dados de categorias.
         private readonly ICategoriaRepository _categoriaRepository;
 
-        // Construtor que recebe o repositório por injeção de dependência
+        // O repositório é recebido por injeção de dependência.
         public CategoriaService(ICategoriaRepository categoriaRepository)
         {
             _categoriaRepository = categoriaRepository;
         }
 
-        // Método responsável por listar todas as categorias
-        public object ListarCategorias()
+        // Retorna todas as categorias cadastradas.
+        public List<CategoriaResponseDto> ListarCategorias()
         {
-            var categorias = _categoriaRepository.ListarTodas()
-                .Select(categoria => new
-                {
-                    categoria.Id,
-                    categoria.Nome
-                })
+            return _categoriaRepository
+                .ListarTodas()
+                .Select(MapearParaResponseDto)
                 .ToList();
-
-            return categorias;
         }
 
-        // Método responsável por buscar uma categoria pelo ID
-        public object BuscarCategoriaPorId(int id)
+        // Busca uma categoria pelo identificador.
+        public CategoriaResponseDto? BuscarCategoriaPorId(int id)
         {
             var categoria = _categoriaRepository.BuscarPorId(id);
 
-            if (categoria == null)
+            if (categoria is null)
             {
                 return null;
             }
 
-            return new
-            {
-                categoria.Id,
-                categoria.Nome
-            };
+            return MapearParaResponseDto(categoria);
         }
 
-        // Método responsável por cadastrar uma nova categoria
-        public Categoria CadastrarCategoria(CategoriaCreateDto categoriaDto)
+        // Cadastra uma nova categoria.
+        public CategoriaResponseDto CadastrarCategoria(
+            CategoriaCreateDto categoriaDto)
         {
-            Categoria categoria = new Categoria();
-
-            categoria.Nome = categoriaDto.Nome.Trim();
+            var categoria = new Categoria
+            {
+                Nome = categoriaDto.Nome.Trim()
+            };
 
             _categoriaRepository.Cadastrar(categoria);
 
-            return categoria;
+            return MapearParaResponseDto(categoria);
         }
 
-        // Método responsável por atualizar uma categoria existente
-        public bool AtualizarCategoria(int id, CategoriaUpdateDto categoriaDto)
+        // Atualiza uma categoria existente.
+        public CategoriaResponseDto? AtualizarCategoria(
+            int id,
+            CategoriaUpdateDto categoriaDto)
         {
             var categoria = _categoriaRepository.BuscarPorId(id);
 
-            if (categoria == null)
+            if (categoria is null)
             {
-                return false;
+                return null;
             }
 
             categoria.Nome = categoriaDto.Nome.Trim();
 
             _categoriaRepository.Atualizar(categoria);
 
-            return true;
+            return MapearParaResponseDto(categoria);
         }
 
-        // Método responsável por verificar se uma categoria possui produtos cadastrados
+        // Verifica se existem produtos vinculados à categoria.
         public bool CategoriaPossuiProdutos(int id)
         {
             return _categoriaRepository.PossuiProdutos(id);
         }
 
-        // Método responsável por remover uma categoria existente
+        // Remove uma categoria existente.
         public bool RemoverCategoria(int id)
         {
             var categoria = _categoriaRepository.BuscarPorId(id);
 
-            if (categoria == null)
+            if (categoria is null)
             {
                 return false;
             }
@@ -95,6 +90,17 @@ namespace SistemaEstoque.Api.Services
             _categoriaRepository.Remover(categoria);
 
             return true;
+        }
+
+        // Converte uma entidade Categoria em um DTO de resposta.
+        private static CategoriaResponseDto MapearParaResponseDto(
+            Categoria categoria)
+        {
+            return new CategoriaResponseDto
+            {
+                Id = categoria.Id,
+                Nome = categoria.Nome
+            };
         }
     }
 }

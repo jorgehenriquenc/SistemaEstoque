@@ -1,57 +1,45 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SistemaEstoque.Api.Dtos.Categorias;
-using SistemaEstoque.Data.Context;
-using SistemaEstoque.Data.Entities;
-using Microsoft.AspNetCore.Authorization;
+using SistemaEstoque.Api.Services;
 
 namespace SistemaEstoque.Api.Controllers
 {
     [Authorize]
-    // Define a rota base: api/categorias
-    [Route("api/[controller]")]
-
-    // Indica que esta classe é um Controller de API
     [ApiController]
+    [Route("api/[controller]")]
     public class CategoriasController : ControllerBase
     {
-        // Contexto usado para acessar o banco de dados
-        private readonly AppDbContext _context;
+        private readonly CategoriaService _categoriaService;
 
-        // Construtor que recebe o AppDbContext por injeção de dependência
-        public CategoriasController(AppDbContext context)
+        public CategoriasController(CategoriaService categoriaService)
         {
-            _context = context;
+            _categoriaService = categoriaService;
         }
 
-        // Endpoint responsável por listar todas as categorias
+        // GET: api/Categorias
         [HttpGet]
-        public IActionResult ListarCategorias()
+        [ProducesResponseType(
+            typeof(List<CategoriaResponseDto>),
+            StatusCodes.Status200OK)]
+        public ActionResult<List<CategoriaResponseDto>> ListarCategorias()
         {
-            var categorias = _context.Categorias
-                .Select(categoria => new
-                {
-                    categoria.Id,
-                    categoria.Nome
-                })
-                .ToList();
+            var categorias = _categoriaService.ListarCategorias();
 
             return Ok(categorias);
         }
 
-        // Endpoint responsável por buscar uma categoria pelo ID
-        [HttpGet("{id}")]
-        public IActionResult BuscarCategoriaPorId(int id)
+        // GET: api/Categorias/1
+        [HttpGet("{id:int}")]
+        [ProducesResponseType(
+            typeof(CategoriaResponseDto),
+            StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public ActionResult<CategoriaResponseDto> BuscarCategoriaPorId(int id)
         {
-            var categoria = _context.Categorias
-                .Where(categoria => categoria.Id == id)
-                .Select(categoria => new
-                {
-                    categoria.Id,
-                    categoria.Nome
-                })
-                .FirstOrDefault();
+            var categoria = _categoriaService.BuscarCategoriaPorId(id);
 
-            if (categoria == null)
+            if (categoria is null)
             {
                 return NotFound("Categoria não encontrada.");
             }
@@ -59,74 +47,82 @@ namespace SistemaEstoque.Api.Controllers
             return Ok(categoria);
         }
 
-        // Endpoint responsável por cadastrar uma nova categoria
+        // POST: api/Categorias
         [HttpPost]
-        public IActionResult CadastrarCategoria([FromBody] CategoriaCreateDto categoriaDto)
+        [ProducesResponseType(
+            typeof(CategoriaResponseDto),
+            StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public ActionResult<CategoriaResponseDto> CadastrarCategoria(
+            [FromBody] CategoriaCreateDto categoriaDto)
         {
             if (string.IsNullOrWhiteSpace(categoriaDto.Nome))
             {
-                return BadRequest("O nome da categoria é obrigatório.");
+                return BadRequest(
+                    "O nome da categoria é obrigatório.");
             }
 
-            Categoria categoria = new Categoria();
+            var categoria =
+                _categoriaService.CadastrarCategoria(categoriaDto);
 
-            categoria.Nome = categoriaDto.Nome.Trim();
-
-            _context.Categorias.Add(categoria);
-            _context.SaveChanges();
-
-            return CreatedAtAction(nameof(BuscarCategoriaPorId), new { id = categoria.Id }, new
-            {
-                categoria.Id,
-                categoria.Nome
-            });
+            return CreatedAtAction(
+                nameof(BuscarCategoriaPorId),
+                new { id = categoria.Id },
+                categoria);
         }
 
-        // Endpoint responsável por atualizar uma categoria existente
-        [HttpPut("{id}")]
-        public IActionResult AtualizarCategoria(int id, [FromBody] CategoriaUpdateDto categoriaDto)
+        // PUT: api/Categorias/1
+        [HttpPut("{id:int}")]
+        [ProducesResponseType(
+            typeof(CategoriaResponseDto),
+            StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public ActionResult<CategoriaResponseDto> AtualizarCategoria(
+            int id,
+            [FromBody] CategoriaUpdateDto categoriaDto)
         {
-            var categoria = _context.Categorias.FirstOrDefault(categoria => categoria.Id == id);
+            if (string.IsNullOrWhiteSpace(categoriaDto.Nome))
+            {
+                return BadRequest(
+                    "O nome da categoria é obrigatório.");
+            }
 
-            if (categoria == null)
+            var categoria =
+                _categoriaService.AtualizarCategoria(id, categoriaDto);
+
+            if (categoria is null)
             {
                 return NotFound("Categoria não encontrada.");
             }
 
-            if (string.IsNullOrWhiteSpace(categoriaDto.Nome))
-            {
-                return BadRequest("O nome da categoria é obrigatório.");
-            }
-
-            categoria.Nome = categoriaDto.Nome.Trim();
-
-            _context.SaveChanges();
-
-            return Ok("Categoria atualizada com sucesso.");
+            return Ok(categoria);
         }
 
-        // Endpoint responsável por remover uma categoria existente
-        [HttpDelete("{id}")]
+        // DELETE: api/Categorias/1
+        [HttpDelete("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         public IActionResult RemoverCategoria(int id)
         {
-            var categoria = _context.Categorias.FirstOrDefault(categoria => categoria.Id == id);
+            var categoria =
+                _categoriaService.BuscarCategoriaPorId(id);
 
-            if (categoria == null)
+            if (categoria is null)
             {
                 return NotFound("Categoria não encontrada.");
             }
 
-            var possuiProdutos = _context.Produtos.Any(produto => produto.CategoriaId == id);
-
-            if (possuiProdutos)
+            if (_categoriaService.CategoriaPossuiProdutos(id))
             {
-                return BadRequest("Não é possível remover uma categoria que possui produtos cadastrados.");
+                return Conflict(
+                    "Não é possível remover uma categoria que possui produtos cadastrados.");
             }
 
-            _context.Categorias.Remove(categoria);
-            _context.SaveChanges();
+            _categoriaService.RemoverCategoria(id);
 
-            return Ok("Categoria removida com sucesso.");
+            return NoContent();
         }
     }
 }

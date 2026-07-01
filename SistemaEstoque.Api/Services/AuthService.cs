@@ -1,5 +1,6 @@
 ﻿using Microsoft.IdentityModel.Tokens;
 using SistemaEstoque.Api.Dtos.Auth;
+using SistemaEstoque.Api.Exceptions;
 using SistemaEstoque.Data.Entities;
 using SistemaEstoque.Data.Repositories.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
@@ -14,7 +15,9 @@ namespace SistemaEstoque.Api.Services
         private readonly IUsuarioRepository _usuarioRepository;
         private readonly IConfiguration _configuration;
 
-        public AuthService(IUsuarioRepository usuarioRepository, IConfiguration configuration)
+        public AuthService(
+            IUsuarioRepository usuarioRepository,
+            IConfiguration configuration)
         {
             _usuarioRepository = usuarioRepository;
             _configuration = configuration;
@@ -23,24 +26,47 @@ namespace SistemaEstoque.Api.Services
         public void Registrar(RegisterDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.Nome))
-                throw new Exception("O nome é obrigatório.");
+            {
+                throw new BusinessValidationException(
+                    "O nome é obrigatório."
+                );
+            }
 
             if (string.IsNullOrWhiteSpace(dto.Email))
-                throw new Exception("O email é obrigatório.");
+            {
+                throw new BusinessValidationException(
+                    "O email é obrigatório."
+                );
+            }
 
             if (string.IsNullOrWhiteSpace(dto.Senha))
-                throw new Exception("A senha é obrigatória.");
+            {
+                throw new BusinessValidationException(
+                    "A senha é obrigatória."
+                );
+            }
 
             if (dto.Senha.Length < 6)
-                throw new Exception("A senha deve ter pelo menos 6 caracteres.");
+            {
+                throw new BusinessValidationException(
+                    "A senha deve ter pelo menos 6 caracteres."
+                );
+            }
 
-            if (_usuarioRepository.EmailExiste(dto.Email))
-                throw new Exception("Já existe um usuário cadastrado com esse email.");
+            var nome = dto.Nome.Trim();
+            var email = dto.Email.Trim().ToLowerInvariant();
+
+            if (_usuarioRepository.EmailExiste(email))
+            {
+                throw new ConflictException(
+                    "Já existe um usuário cadastrado com esse email."
+                );
+            }
 
             var usuario = new Usuario
             {
-                Nome = dto.Nome,
-                Email = dto.Email,
+                Nome = nome,
+                Email = email,
                 SenhaHash = GerarHashSenha(dto.Senha)
             };
 
@@ -50,20 +76,42 @@ namespace SistemaEstoque.Api.Services
         public AuthResponseDto Login(LoginDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.Email))
-                throw new Exception("O email é obrigatório.");
+            {
+                throw new BusinessValidationException(
+                    "O email é obrigatório."
+                );
+            }
 
             if (string.IsNullOrWhiteSpace(dto.Senha))
-                throw new Exception("A senha é obrigatória.");
+            {
+                throw new BusinessValidationException(
+                    "A senha é obrigatória."
+                );
+            }
 
-            var usuario = _usuarioRepository.BuscarPorEmail(dto.Email);
+            var email = dto.Email.Trim().ToLowerInvariant();
 
-            if (usuario == null)
-                throw new Exception("Email ou senha inválidos.");
+            var usuario =
+                _usuarioRepository.BuscarPorEmail(email);
 
-            var senhaValida = VerificarSenha(dto.Senha, usuario.SenhaHash);
+            if (usuario is null)
+            {
+                throw new InvalidCredentialsException(
+                    "Email ou senha inválidos."
+                );
+            }
+
+            var senhaValida = VerificarSenha(
+                dto.Senha,
+                usuario.SenhaHash
+            );
 
             if (!senhaValida)
-                throw new Exception("Email ou senha inválidos.");
+            {
+                throw new InvalidCredentialsException(
+                    "Email ou senha inválidos."
+                );
+            }
 
             var token = GerarToken(usuario);
 
@@ -77,71 +125,136 @@ namespace SistemaEstoque.Api.Services
 
         private string GerarToken(Usuario usuario)
         {
-            var jwtKey = _configuration["Jwt:Key"];
+            var jwtKey =
+                _configuration["Jwt:Key"];
+
+            var issuer =
+                _configuration["Jwt:Issuer"];
+
+            var audience =
+                _configuration["Jwt:Audience"];
 
             if (string.IsNullOrWhiteSpace(jwtKey))
-                throw new Exception("Chave JWT não configurada.");
+            {
+                throw new InvalidOperationException(
+                    "A chave JWT não foi configurada."
+                );
+            }
 
-            var issuer = _configuration["Jwt:Issuer"];
-            var audience = _configuration["Jwt:Audience"];
+            if (string.IsNullOrWhiteSpace(issuer))
+            {
+                throw new InvalidOperationException(
+                    "O emissor JWT não foi configurado."
+                );
+            }
+
+            if (string.IsNullOrWhiteSpace(audience))
+            {
+                throw new InvalidOperationException(
+                    "O público JWT não foi configurado."
+                );
+            }
 
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
-                new Claim(ClaimTypes.Name, usuario.Nome),
-                new Claim(ClaimTypes.Email, usuario.Email)
+                new(
+                    ClaimTypes.NameIdentifier,
+                    usuario.Id.ToString()
+                ),
+
+                new(
+                    ClaimTypes.Name,
+                    usuario.Nome
+                ),
+
+                new(
+                    ClaimTypes.Email,
+                    usuario.Email
+                )
             };
 
-            var chave = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
-            var credenciais = new SigningCredentials(chave, SecurityAlgorithms.HmacSha256);
+            var chave = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtKey)
+            );
+
+            var credenciais = new SigningCredentials(
+                chave,
+                SecurityAlgorithms.HmacSha256
+            );
 
             var token = new JwtSecurityToken(
                 issuer: issuer,
                 audience: audience,
                 claims: claims,
-                expires: DateTime.Now.AddHours(2),
+                expires: DateTime.UtcNow.AddHours(2),
                 signingCredentials: credenciais
             );
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+            return new JwtSecurityTokenHandler()
+                .WriteToken(token);
         }
 
-        private string GerarHashSenha(string senha)
+        private static string GerarHashSenha(string senha)
         {
-            byte[] salt = RandomNumberGenerator.GetBytes(16);
+            var salt =
+                RandomNumberGenerator.GetBytes(16);
 
-            using var pbkdf2 = new Rfc2898DeriveBytes(
-                senha,
-                salt,
-                100000,
-                HashAlgorithmName.SHA256
-            );
+            using var pbkdf2 =
+                new Rfc2898DeriveBytes(
+                    senha,
+                    salt,
+                    100000,
+                    HashAlgorithmName.SHA256
+                );
 
-            byte[] hash = pbkdf2.GetBytes(32);
+            var hash = pbkdf2.GetBytes(32);
 
-            return $"{Convert.ToBase64String(salt)}.{Convert.ToBase64String(hash)}";
+            return
+                $"{Convert.ToBase64String(salt)}." +
+                $"{Convert.ToBase64String(hash)}";
         }
 
-        private bool VerificarSenha(string senha, string senhaHashSalva)
+        private static bool VerificarSenha(
+            string senha,
+            string senhaHashSalva)
         {
-            var partes = senhaHashSalva.Split('.');
+            var partes =
+                senhaHashSalva.Split('.');
 
             if (partes.Length != 2)
+            {
                 return false;
+            }
 
-            byte[] salt = Convert.FromBase64String(partes[0]);
-            byte[] hashSalvo = Convert.FromBase64String(partes[1]);
+            try
+            {
+                var salt =
+                    Convert.FromBase64String(partes[0]);
 
-            using var pbkdf2 = new Rfc2898DeriveBytes(
-                senha,
-                salt,
-                100000,
-                HashAlgorithmName.SHA256
-            );
+                var hashSalvo =
+                    Convert.FromBase64String(partes[1]);
 
-            byte[] hashDigitado = pbkdf2.GetBytes(32);
+                using var pbkdf2 =
+                    new Rfc2898DeriveBytes(
+                        senha,
+                        salt,
+                        100000,
+                        HashAlgorithmName.SHA256
+                    );
 
-            return CryptographicOperations.FixedTimeEquals(hashSalvo, hashDigitado);
+                var hashDigitado =
+                    pbkdf2.GetBytes(32);
+
+                return CryptographicOperations
+                    .FixedTimeEquals(
+                        hashSalvo,
+                        hashDigitado
+                    );
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
         }
     }
 }

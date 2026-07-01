@@ -1,11 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SistemaEstoque.Api.Dtos.Auth;
 using SistemaEstoque.Api.Services;
 
 namespace SistemaEstoque.Api.Controllers
 {
-    [Route("api/[controller]")]
+    [AllowAnonymous]
     [ApiController]
+    [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
         private readonly AuthService _authService;
@@ -15,43 +17,49 @@ namespace SistemaEstoque.Api.Controllers
             _authService = authService;
         }
 
+        // POST: api/Auth/register
         [HttpPost("register")]
-        public IActionResult Registrar(RegisterDto dto)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(
+            typeof(ProblemDetails),
+            StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(
+            typeof(ProblemDetails),
+            StatusCodes.Status409Conflict)]
+        [ProducesResponseType(
+            typeof(ProblemDetails),
+            StatusCodes.Status500InternalServerError)]
+        public IActionResult Registrar(
+            [FromBody] RegisterDto dto)
         {
-            try
-            {
-                _authService.Registrar(dto);
+            _authService.Registrar(dto);
 
-                return Ok(new
-                {
-                    mensagem = "Usuário cadastrado com sucesso."
-                });
-            }
-            catch (Exception ex)
+            return Ok(new
             {
-                return BadRequest(new
-                {
-                    erro = ex.Message
-                });
-            }
+                mensagem = "Usuário cadastrado com sucesso."
+            });
         }
 
+        // POST: api/Auth/login
         [HttpPost("login")]
-        public IActionResult Login(LoginDto dto)
+        [ProducesResponseType(
+            typeof(AuthResponseDto),
+            StatusCodes.Status200OK)]
+        [ProducesResponseType(
+            typeof(ProblemDetails),
+            StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(
+            typeof(ProblemDetails),
+            StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(
+            typeof(ProblemDetails),
+            StatusCodes.Status500InternalServerError)]
+        public ActionResult<AuthResponseDto> Login(
+            [FromBody] LoginDto dto)
         {
-            try
-            {
-                var resposta = _authService.Login(dto);
+            var resposta = _authService.Login(dto);
 
-                return Ok(resposta);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new
-                {
-                    erro = ex.Message
-                });
-            }
+            return Ok(resposta);
         }
     }
 }

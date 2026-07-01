@@ -56,12 +56,6 @@ namespace SistemaEstoque.Api.Controllers
         public ActionResult<CategoriaResponseDto> CadastrarCategoria(
             [FromBody] CategoriaCreateDto categoriaDto)
         {
-            if (string.IsNullOrWhiteSpace(categoriaDto.Nome))
-            {
-                return BadRequest(
-                    "O nome da categoria é obrigatório.");
-            }
-
             var categoria =
                 _categoriaService.CadastrarCategoria(categoriaDto);
 
@@ -82,12 +76,6 @@ namespace SistemaEstoque.Api.Controllers
             int id,
             [FromBody] CategoriaUpdateDto categoriaDto)
         {
-            if (string.IsNullOrWhiteSpace(categoriaDto.Nome))
-            {
-                return BadRequest(
-                    "O nome da categoria é obrigatório.");
-            }
-
             var categoria =
                 _categoriaService.AtualizarCategoria(id, categoriaDto);
 

@@ -5,59 +5,66 @@ using SistemaEstoque.Data.Repositories.Interfaces;
 
 namespace SistemaEstoque.Data.Repositories.Implementations
 {
-    // Implementação das operações de banco para Produto
+    // Implementa as operações de banco de dados para Produto.
     public class ProdutoRepository : IProdutoRepository
     {
-        // Contexto usado para acessar o banco de dados
         private readonly AppDbContext _context;
 
-        // Construtor que recebe o AppDbContext por injeção de dependência
         public ProdutoRepository(AppDbContext context)
         {
             _context = context;
         }
 
-        // Retorna todos os produtos cadastrados com suas categorias
-        public List<Produto> ListarTodos()
+        // Retorna todos os produtos cadastrados com suas categorias.
+        public async Task<List<Produto>> ListarTodosAsync()
         {
-            return _context.Produtos
+            return await _context.Produtos
                 .Include(produto => produto.Categoria)
-                .ToList();
+                .ToListAsync();
         }
 
-        // Busca um produto pelo ID com sua categoria
-        public Produto BuscarPorId(int id)
+        // Busca um produto pelo identificador com sua categoria.
+        public async Task<Produto?> BuscarPorIdAsync(int id)
         {
-            return _context.Produtos
+            return await _context.Produtos
                 .Include(produto => produto.Categoria)
-                .FirstOrDefault(produto => produto.Id == id);
+                .FirstOrDefaultAsync(
+                    produto => produto.Id == id
+                );
         }
 
-        // Verifica se uma categoria existe
-        public bool CategoriaExiste(int categoriaId)
+        // Verifica se a categoria existe.
+        public async Task<bool> CategoriaExisteAsync(
+            int categoriaId)
         {
-            return _context.Categorias.Any(categoria => categoria.Id == categoriaId);
+            return await _context.Categorias
+                .AnyAsync(
+                    categoria => categoria.Id == categoriaId
+                );
         }
 
-        // Cadastra um novo produto
-        public void Cadastrar(Produto produto)
+        // Cadastra um produto.
+        public async Task CadastrarAsync(Produto produto)
         {
             _context.Produtos.Add(produto);
-            _context.SaveChanges();
+
+            await _context.SaveChangesAsync();
         }
 
-        // Atualiza um produto existente
-        public void Atualizar(Produto produto)
+        // Atualiza um produto.
+        public async Task AtualizarAsync(Produto produto)
         {
             _context.Produtos.Update(produto);
-            _context.SaveChanges();
+
+            await _context.SaveChangesAsync();
         }
 
-        // Remove um produto existente
-        public void Remover(Produto produto)
+        // Remove um produto.
+        public async Task RemoverAsync(Produto produto)
         {
             _context.Produtos.Remove(produto);
-            _context.SaveChanges();
+
+            await _context.SaveChangesAsync();
         }
     }
 }

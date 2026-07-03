@@ -4,22 +4,24 @@ using SistemaEstoque.Data.Repositories.Interfaces;
 
 namespace SistemaEstoque.Api.Services
 {
-    // Serviço responsável pelas regras de negócio de produtos
+    // Serviço responsável pelas regras de negócio de produtos.
     public class ProdutoService
     {
-        // Repositório usado para acessar os dados de produtos
         private readonly IProdutoRepository _produtoRepository;
 
-        // Construtor que recebe o repositório por injeção de dependência
-        public ProdutoService(IProdutoRepository produtoRepository)
+        public ProdutoService(
+            IProdutoRepository produtoRepository)
         {
             _produtoRepository = produtoRepository;
         }
 
-        // Método responsável por listar todos os produtos
-        public object ListarProdutos()
+        // Retorna todos os produtos cadastrados.
+        public async Task<object> ListarProdutosAsync()
         {
-            var produtos = _produtoRepository.ListarTodos()
+            var produtos =
+                await _produtoRepository.ListarTodosAsync();
+
+            var resposta = produtos
                 .Select(produto => new
                 {
                     produto.Id,
@@ -29,19 +31,21 @@ namespace SistemaEstoque.Api.Services
                     produto.EstoqueMinimo,
                     produto.Ativo,
                     produto.CategoriaId,
-                    Categoria = produto.Categoria.Nome
+                    Categoria = produto.Categoria?.Nome
                 })
                 .ToList();
 
-            return produtos;
+            return resposta;
         }
 
-        // Método responsável por buscar um produto pelo ID
-        public object BuscarProdutoPorId(int id)
+        // Busca um produto pelo identificador.
+        public async Task<object?> BuscarProdutoPorIdAsync(
+            int id)
         {
-            var produto = _produtoRepository.BuscarPorId(id);
+            var produto =
+                await _produtoRepository.BuscarPorIdAsync(id);
 
-            if (produto == null)
+            if (produto is null)
             {
                 return null;
             }
@@ -55,67 +59,83 @@ namespace SistemaEstoque.Api.Services
                 produto.EstoqueMinimo,
                 produto.Ativo,
                 produto.CategoriaId,
-                Categoria = produto.Categoria.Nome
+                Categoria = produto.Categoria?.Nome
             };
         }
 
-        // Método responsável por verificar se uma categoria existe
-        public bool CategoriaExiste(int categoriaId)
+        // Verifica se uma categoria existe.
+        public async Task<bool> CategoriaExisteAsync(
+            int categoriaId)
         {
-            return _produtoRepository.CategoriaExiste(categoriaId);
+            return await _produtoRepository
+                .CategoriaExisteAsync(categoriaId);
         }
 
-        // Método responsável por cadastrar um novo produto
-        public Produto CadastrarProduto(ProdutoCreateDto produtoDto)
+        // Cadastra um novo produto.
+        public async Task<Produto> CadastrarProdutoAsync(
+            ProdutoCreateDto produtoDto)
         {
-            Produto produto = new Produto
+            var produto = new Produto
             {
                 Nome = produtoDto.Nome.Trim(),
                 Preco = produtoDto.Preco,
-                QuantidadeEmEstoque = produtoDto.QuantidadeEmEstoque,
-                EstoqueMinimo = produtoDto.EstoqueMinimo,
+                QuantidadeEmEstoque =
+                    produtoDto.QuantidadeEmEstoque,
+                EstoqueMinimo =
+                    produtoDto.EstoqueMinimo,
                 Ativo = true,
-                CategoriaId = produtoDto.CategoriaId
+                CategoriaId =
+                    produtoDto.CategoriaId
             };
 
-            _produtoRepository.Cadastrar(produto);
+            await _produtoRepository
+                .CadastrarAsync(produto);
 
             return produto;
         }
 
-        // Método responsável por atualizar um produto existente
-        public bool AtualizarProduto(int id, ProdutoUpdateDto produtoDto)
+        // Atualiza um produto existente.
+        public async Task<bool> AtualizarProdutoAsync(
+            int id,
+            ProdutoUpdateDto produtoDto)
         {
-            Produto produto = _produtoRepository.BuscarPorId(id);
+            var produto =
+                await _produtoRepository.BuscarPorIdAsync(id);
 
-            if (produto == null)
+            if (produto is null)
             {
                 return false;
             }
 
             produto.Nome = produtoDto.Nome.Trim();
             produto.Preco = produtoDto.Preco;
-            produto.QuantidadeEmEstoque = produtoDto.QuantidadeEmEstoque;
-            produto.EstoqueMinimo = produtoDto.EstoqueMinimo;
+            produto.QuantidadeEmEstoque =
+                produtoDto.QuantidadeEmEstoque;
+            produto.EstoqueMinimo =
+                produtoDto.EstoqueMinimo;
             produto.Ativo = produtoDto.Ativo;
-            produto.CategoriaId = produtoDto.CategoriaId;
+            produto.CategoriaId =
+                produtoDto.CategoriaId;
 
-            _produtoRepository.Atualizar(produto);
+            await _produtoRepository
+                .AtualizarAsync(produto);
 
             return true;
         }
 
-        // Método responsável por remover um produto existente
-        public bool RemoverProduto(int id)
+        // Remove um produto existente.
+        public async Task<bool> RemoverProdutoAsync(int id)
         {
-            Produto produto = _produtoRepository.BuscarPorId(id);
+            var produto =
+                await _produtoRepository.BuscarPorIdAsync(id);
 
-            if (produto == null)
+            if (produto is null)
             {
                 return false;
             }
 
-            _produtoRepository.Remover(produto);
+            await _produtoRepository
+                .RemoverAsync(produto);
 
             return true;
         }

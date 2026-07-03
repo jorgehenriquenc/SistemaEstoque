@@ -6,52 +6,68 @@ using SistemaEstoque.Api.Services;
 namespace SistemaEstoque.Api.Controllers
 {
     [Authorize]
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class ProdutosController : ControllerBase
     {
         private readonly ProdutoService _produtoService;
 
-        public ProdutosController(ProdutoService produtoService)
+        public ProdutosController(
+            ProdutoService produtoService)
         {
             _produtoService = produtoService;
         }
 
+        // GET: api/Produtos
         [HttpGet]
-        public IActionResult ListarProdutos()
+        public async Task<IActionResult> ListarProdutos()
         {
-            var produtos = _produtoService.ListarProdutos();
+            var produtos =
+                await _produtoService.ListarProdutosAsync();
 
             return Ok(produtos);
         }
 
-        [HttpGet("{id}")]
-        public IActionResult BuscarProdutoPorId(int id)
+        // GET: api/Produtos/1
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> BuscarProdutoPorId(
+            int id)
         {
-            var produto = _produtoService.BuscarProdutoPorId(id);
+            var produto =
+                await _produtoService
+                    .BuscarProdutoPorIdAsync(id);
 
-            if (produto == null)
+            if (produto is null)
             {
-                return NotFound("Produto não encontrado.");
+                return NotFound(
+                    "Produto não encontrado."
+                );
             }
 
             return Ok(produto);
         }
 
+        // POST: api/Produtos
         [HttpPost]
-        public IActionResult CadastrarProduto(
+        public async Task<IActionResult> CadastrarProduto(
             [FromBody] ProdutoCreateDto produtoDto)
         {
-            bool categoriaExiste =
-                _produtoService.CategoriaExiste(produtoDto.CategoriaId);
+            var categoriaExiste =
+                await _produtoService
+                    .CategoriaExisteAsync(
+                        produtoDto.CategoriaId
+                    );
 
             if (!categoriaExiste)
             {
-                return BadRequest("Categoria não encontrada.");
+                return BadRequest(
+                    "Categoria não encontrada."
+                );
             }
 
             var produto =
-                _produtoService.CadastrarProduto(produtoDto);
+                await _produtoService
+                    .CadastrarProdutoAsync(produtoDto);
 
             return CreatedAtAction(
                 nameof(BuscarProdutoPorId),
@@ -69,42 +85,62 @@ namespace SistemaEstoque.Api.Controllers
             );
         }
 
-        [HttpPut("{id}")]
-        public IActionResult AtualizarProduto(
+        // PUT: api/Produtos/1
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> AtualizarProduto(
             int id,
             [FromBody] ProdutoUpdateDto produtoDto)
         {
-            bool categoriaExiste =
-                _produtoService.CategoriaExiste(produtoDto.CategoriaId);
+            var categoriaExiste =
+                await _produtoService
+                    .CategoriaExisteAsync(
+                        produtoDto.CategoriaId
+                    );
 
             if (!categoriaExiste)
             {
-                return BadRequest("Categoria não encontrada.");
+                return BadRequest(
+                    "Categoria não encontrada."
+                );
             }
 
-            bool atualizado =
-                _produtoService.AtualizarProduto(id, produtoDto);
+            var atualizado =
+                await _produtoService
+                    .AtualizarProdutoAsync(
+                        id,
+                        produtoDto
+                    );
 
             if (!atualizado)
             {
-                return NotFound("Produto não encontrado.");
+                return NotFound(
+                    "Produto não encontrado."
+                );
             }
 
-            return Ok("Produto atualizado com sucesso.");
+            return Ok(
+                "Produto atualizado com sucesso."
+            );
         }
 
-        [HttpDelete("{id}")]
-        public IActionResult RemoverProduto(int id)
+        // DELETE: api/Produtos/1
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> RemoverProduto(int id)
         {
-            bool removido =
-                _produtoService.RemoverProduto(id);
+            var removido =
+                await _produtoService
+                    .RemoverProdutoAsync(id);
 
             if (!removido)
             {
-                return NotFound("Produto não encontrado.");
+                return NotFound(
+                    "Produto não encontrado."
+                );
             }
 
-            return Ok("Produto removido com sucesso.");
+            return Ok(
+                "Produto removido com sucesso."
+            );
         }
     }
 }

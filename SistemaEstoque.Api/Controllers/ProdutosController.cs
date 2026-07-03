@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SistemaEstoque.Api.Dtos.Produtos;
 using SistemaEstoque.Api.Services;
-using Microsoft.AspNetCore.Authorization;
 
 namespace SistemaEstoque.Api.Controllers
 {
@@ -39,80 +39,51 @@ namespace SistemaEstoque.Api.Controllers
         }
 
         [HttpPost]
-        public IActionResult CadastrarProduto([FromBody] ProdutoCreateDto produtoDto)
+        public IActionResult CadastrarProduto(
+            [FromBody] ProdutoCreateDto produtoDto)
         {
-            if (string.IsNullOrWhiteSpace(produtoDto.Nome))
-            {
-                return BadRequest("O nome do produto é obrigatório.");
-            }
-
-            if (produtoDto.Preco <= 0)
-            {
-                return BadRequest("O preço deve ser maior que zero.");
-            }
-
-            if (produtoDto.QuantidadeEmEstoque < 0)
-            {
-                return BadRequest("A quantidade em estoque não pode ser negativa.");
-            }
-
-            if (produtoDto.EstoqueMinimo < 0)
-            {
-                return BadRequest("O estoque mínimo não pode ser negativo.");
-            }
-
-            bool categoriaExiste = _produtoService.CategoriaExiste(produtoDto.CategoriaId);
+            bool categoriaExiste =
+                _produtoService.CategoriaExiste(produtoDto.CategoriaId);
 
             if (!categoriaExiste)
             {
                 return BadRequest("Categoria não encontrada.");
             }
 
-            var produto = _produtoService.CadastrarProduto(produtoDto);
+            var produto =
+                _produtoService.CadastrarProduto(produtoDto);
 
-            return CreatedAtAction(nameof(BuscarProdutoPorId), new { id = produto.Id }, new
-            {
-                produto.Id,
-                produto.Nome,
-                produto.Preco,
-                produto.QuantidadeEmEstoque,
-                produto.EstoqueMinimo,
-                produto.Ativo,
-                produto.CategoriaId
-            });
+            return CreatedAtAction(
+                nameof(BuscarProdutoPorId),
+                new { id = produto.Id },
+                new
+                {
+                    produto.Id,
+                    produto.Nome,
+                    produto.Preco,
+                    produto.QuantidadeEmEstoque,
+                    produto.EstoqueMinimo,
+                    produto.Ativo,
+                    produto.CategoriaId
+                }
+            );
         }
 
         [HttpPut("{id}")]
-        public IActionResult AtualizarProduto(int id, [FromBody] ProdutoUpdateDto produtoDto)
+        public IActionResult AtualizarProduto(
+            int id,
+            [FromBody] ProdutoUpdateDto produtoDto)
         {
-            if (string.IsNullOrWhiteSpace(produtoDto.Nome))
-            {
-                return BadRequest("O nome do produto é obrigatório.");
-            }
-
-            if (produtoDto.Preco <= 0)
-            {
-                return BadRequest("O preço deve ser maior que zero.");
-            }
-
-            if (produtoDto.QuantidadeEmEstoque < 0)
-            {
-                return BadRequest("A quantidade em estoque não pode ser negativa.");
-            }
-
-            if (produtoDto.EstoqueMinimo < 0)
-            {
-                return BadRequest("O estoque mínimo não pode ser negativo.");
-            }
-
-            bool categoriaExiste = _produtoService.CategoriaExiste(produtoDto.CategoriaId);
+            bool categoriaExiste =
+                _produtoService.CategoriaExiste(produtoDto.CategoriaId);
 
             if (!categoriaExiste)
             {
                 return BadRequest("Categoria não encontrada.");
             }
 
-            bool atualizado = _produtoService.AtualizarProduto(id, produtoDto);
+            bool atualizado =
+                _produtoService.AtualizarProduto(id, produtoDto);
 
             if (!atualizado)
             {
@@ -125,7 +96,8 @@ namespace SistemaEstoque.Api.Controllers
         [HttpDelete("{id}")]
         public IActionResult RemoverProduto(int id)
         {
-            bool removido = _produtoService.RemoverProduto(id);
+            bool removido =
+                _produtoService.RemoverProduto(id);
 
             if (!removido)
             {

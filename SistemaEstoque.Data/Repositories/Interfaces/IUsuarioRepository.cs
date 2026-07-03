@@ -2,15 +2,16 @@
 
 namespace SistemaEstoque.Data.Repositories.Interfaces
 {
+    // Define as operações de banco de dados para usuários.
     public interface IUsuarioRepository
     {
-        // Busca usuário pelo email
-        Usuario? BuscarPorEmail(string email);
+        // Busca um usuário pelo email.
+        Task<Usuario?> BuscarPorEmailAsync(string email);
 
-        // Verifica se já existe usuário com esse email
-        bool EmailExiste(string email);
+        // Verifica se já existe um usuário com o email informado.
+        Task<bool> EmailExisteAsync(string email);
 
-        // Cadastra usuário no banco
-        void Cadastrar(Usuario usuario);
+        // Cadastra um novo usuário.
+        Task CadastrarAsync(Usuario usuario);
     }
 }

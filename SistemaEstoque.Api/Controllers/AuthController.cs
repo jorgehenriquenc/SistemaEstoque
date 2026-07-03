@@ -29,10 +29,10 @@ namespace SistemaEstoque.Api.Controllers
         [ProducesResponseType(
             typeof(ProblemDetails),
             StatusCodes.Status500InternalServerError)]
-        public IActionResult Registrar(
+        public async Task<IActionResult> Registrar(
             [FromBody] RegisterDto dto)
         {
-            _authService.Registrar(dto);
+            await _authService.RegistrarAsync(dto);
 
             return Ok(new
             {
@@ -54,10 +54,11 @@ namespace SistemaEstoque.Api.Controllers
         [ProducesResponseType(
             typeof(ProblemDetails),
             StatusCodes.Status500InternalServerError)]
-        public ActionResult<AuthResponseDto> Login(
+        public async Task<ActionResult<AuthResponseDto>> Login(
             [FromBody] LoginDto dto)
         {
-            var resposta = _authService.Login(dto);
+            var resposta =
+                await _authService.LoginAsync(dto);
 
             return Ok(resposta);
         }

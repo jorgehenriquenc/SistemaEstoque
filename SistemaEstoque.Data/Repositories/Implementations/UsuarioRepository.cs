@@ -1,9 +1,11 @@
-﻿using SistemaEstoque.Data.Context;
+﻿using Microsoft.EntityFrameworkCore;
+using SistemaEstoque.Data.Context;
 using SistemaEstoque.Data.Entities;
 using SistemaEstoque.Data.Repositories.Interfaces;
 
 namespace SistemaEstoque.Data.Repositories.Implementations
 {
+    // Implementa as operações de banco de dados para usuários.
     public class UsuarioRepository : IUsuarioRepository
     {
         private readonly AppDbContext _context;
@@ -13,22 +15,31 @@ namespace SistemaEstoque.Data.Repositories.Implementations
             _context = context;
         }
 
-        public Usuario? BuscarPorEmail(string email)
+        // Busca um usuário pelo email.
+        public async Task<Usuario?> BuscarPorEmailAsync(
+            string email)
         {
-            return _context.Usuarios
-                .FirstOrDefault(u => u.Email.ToLower() == email.ToLower());
+            return await _context.Usuarios
+                .FirstOrDefaultAsync(
+                    usuario => usuario.Email == email
+                );
         }
 
-        public bool EmailExiste(string email)
+        // Verifica se já existe um usuário com o email informado.
+        public async Task<bool> EmailExisteAsync(string email)
         {
-            return _context.Usuarios
-                .Any(u => u.Email.ToLower() == email.ToLower());
+            return await _context.Usuarios
+                .AnyAsync(
+                    usuario => usuario.Email == email
+                );
         }
 
-        public void Cadastrar(Usuario usuario)
+        // Cadastra um novo usuário no banco.
+        public async Task CadastrarAsync(Usuario usuario)
         {
             _context.Usuarios.Add(usuario);
-            _context.SaveChanges();
+
+            await _context.SaveChangesAsync();
         }
     }
 }

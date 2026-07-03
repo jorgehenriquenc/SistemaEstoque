@@ -10,6 +10,7 @@ using System.Text;
 
 namespace SistemaEstoque.Api.Services
 {
+    // Serviço responsável pelo cadastro, login e geração do token JWT.
     public class AuthService
     {
         private readonly IUsuarioRepository _usuarioRepository;
@@ -23,7 +24,8 @@ namespace SistemaEstoque.Api.Services
             _configuration = configuration;
         }
 
-        public void Registrar(RegisterDto dto)
+        // Cadastra um novo usuário.
+        public async Task RegistrarAsync(RegisterDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.Nome))
             {
@@ -54,9 +56,16 @@ namespace SistemaEstoque.Api.Services
             }
 
             var nome = dto.Nome.Trim();
-            var email = dto.Email.Trim().ToLowerInvariant();
 
-            if (_usuarioRepository.EmailExiste(email))
+            var email = dto.Email
+                .Trim()
+                .ToLowerInvariant();
+
+            var emailExiste =
+                await _usuarioRepository
+                    .EmailExisteAsync(email);
+
+            if (emailExiste)
             {
                 throw new ConflictException(
                     "Já existe um usuário cadastrado com esse email."
@@ -70,10 +79,12 @@ namespace SistemaEstoque.Api.Services
                 SenhaHash = GerarHashSenha(dto.Senha)
             };
 
-            _usuarioRepository.Cadastrar(usuario);
+            await _usuarioRepository
+                .CadastrarAsync(usuario);
         }
 
-        public AuthResponseDto Login(LoginDto dto)
+        // Realiza o login e retorna os dados do usuário com o token.
+        public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.Email))
             {
@@ -89,10 +100,13 @@ namespace SistemaEstoque.Api.Services
                 );
             }
 
-            var email = dto.Email.Trim().ToLowerInvariant();
+            var email = dto.Email
+                .Trim()
+                .ToLowerInvariant();
 
             var usuario =
-                _usuarioRepository.BuscarPorEmail(email);
+                await _usuarioRepository
+                    .BuscarPorEmailAsync(email);
 
             if (usuario is null)
             {
@@ -123,16 +137,12 @@ namespace SistemaEstoque.Api.Services
             };
         }
 
+        // Gera o token JWT do usuário autenticado.
         private string GerarToken(Usuario usuario)
         {
-            var jwtKey =
-                _configuration["Jwt:Key"];
-
-            var issuer =
-                _configuration["Jwt:Issuer"];
-
-            var audience =
-                _configuration["Jwt:Audience"];
+            var jwtKey = _configuration["Jwt:Key"];
+            var issuer = _configuration["Jwt:Issuer"];
+            var audience = _configuration["Jwt:Audience"];
 
             if (string.IsNullOrWhiteSpace(jwtKey))
             {
@@ -161,12 +171,10 @@ namespace SistemaEstoque.Api.Services
                     ClaimTypes.NameIdentifier,
                     usuario.Id.ToString()
                 ),
-
                 new(
                     ClaimTypes.Name,
                     usuario.Nome
                 ),
-
                 new(
                     ClaimTypes.Email,
                     usuario.Email
@@ -194,6 +202,7 @@ namespace SistemaEstoque.Api.Services
                 .WriteToken(token);
         }
 
+        // Cria um hash seguro para a senha.
         private static string GerarHashSenha(string senha)
         {
             var salt =
@@ -209,17 +218,16 @@ namespace SistemaEstoque.Api.Services
 
             var hash = pbkdf2.GetBytes(32);
 
-            return
-                $"{Convert.ToBase64String(salt)}." +
-                $"{Convert.ToBase64String(hash)}";
+            return $"{Convert.ToBase64String(salt)}." +
+                   $"{Convert.ToBase64String(hash)}";
         }
 
+        // Compara a senha informada com o hash armazenado.
         private static bool VerificarSenha(
             string senha,
             string senhaHashSalva)
         {
-            var partes =
-                senhaHashSalva.Split('.');
+            var partes = senhaHashSalva.Split('.');
 
             if (partes.Length != 2)
             {

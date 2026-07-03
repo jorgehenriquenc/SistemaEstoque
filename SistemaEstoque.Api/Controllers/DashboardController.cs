@@ -1,32 +1,30 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SistemaEstoque.Api.Services;
-using Microsoft.AspNetCore.Authorization;
+using System.Threading.Tasks;
 
 namespace SistemaEstoque.Api.Controllers
 {
-
     [Authorize]
-    // Define a rota base: api/dashboard
-    [Route("api/[controller]")]
-
-    // Indica que esta classe é um Controller de API
     [ApiController]
+    [Route("api/[controller]")]
     public class DashboardController : ControllerBase
     {
-        // Serviço responsável pelas regras de negócio de pedidos e dashboard
         private readonly PedidoService _pedidoService;
 
-        // Construtor que recebe o PedidoService por injeção de dependência
-        public DashboardController(PedidoService pedidoService)
+        public DashboardController(
+            PedidoService pedidoService)
         {
             _pedidoService = pedidoService;
         }
 
-        // Endpoint responsável por exibir um resumo geral do estoque
+        // GET: api/Dashboard
         [HttpGet]
-        public IActionResult ExibirDashboard()
+        public async Task<IActionResult> ExibirDashboard()
         {
-            var dashboard = _pedidoService.ExibirDashboard();
+            var dashboard =
+                await _pedidoService
+                    .ExibirDashboardAsync();
 
             return Ok(dashboard);
         }

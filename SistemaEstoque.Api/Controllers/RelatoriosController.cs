@@ -1,31 +1,31 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SistemaEstoque.Api.Services;
-using Microsoft.AspNetCore.Authorization;
+using System.Threading.Tasks;
 
 namespace SistemaEstoque.Api.Controllers
 {
     [Authorize]
-    // Define a rota base: api/relatorios
-    [Route("api/[controller]")]
-
-    // Indica que esta classe é um Controller de API
     [ApiController]
+    [Route("api/[controller]")]
     public class RelatoriosController : ControllerBase
     {
-        // Serviço responsável pelas regras de relatório
         private readonly PedidoService _pedidoService;
 
-        // Construtor que recebe o PedidoService por injeção de dependência
-        public RelatoriosController(PedidoService pedidoService)
+        public RelatoriosController(
+            PedidoService pedidoService)
         {
             _pedidoService = pedidoService;
         }
 
-        // Endpoint responsável por listar os produtos mais vendidos
+        // GET: api/Relatorios/produtos-mais-vendidos
         [HttpGet("produtos-mais-vendidos")]
-        public IActionResult ListarProdutosMaisVendidos()
+        public async Task<IActionResult>
+            ListarProdutosMaisVendidos()
         {
-            var produtosMaisVendidos = _pedidoService.ListarProdutosMaisVendidos();
+            var produtosMaisVendidos =
+                await _pedidoService
+                    .ListarProdutosMaisVendidosAsync();
 
             return Ok(produtosMaisVendidos);
         }

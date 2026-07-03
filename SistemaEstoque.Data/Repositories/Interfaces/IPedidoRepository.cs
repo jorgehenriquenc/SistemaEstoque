@@ -1,38 +1,37 @@
 ﻿using SistemaEstoque.Data.Entities;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace SistemaEstoque.Data.Repositories.Interfaces
 {
-    // Interface que define as operações de banco para Pedido
+    // Define as operações de banco de dados relacionadas a pedidos.
     public interface IPedidoRepository
     {
-        // Retorna todos os pedidos cadastrados
-        List<Pedido> ListarTodos();
+        // Retorna todos os pedidos cadastrados.
+        Task<List<Pedido>> ListarTodosAsync();
 
-        // Busca um pedido pelo ID
-        Pedido BuscarPorId(int id);
+        // Busca um pedido pelo identificador.
+        Task<Pedido?> BuscarPorIdAsync(int id);
 
-        // Busca um produto pelo ID
-        Produto BuscarProdutoPorId(int produtoId);
+        // Busca um produto pelo identificador.
+        Task<Produto?> BuscarProdutoPorIdAsync(int produtoId);
 
-        // Cadastra um novo pedido
-        void Cadastrar(Pedido pedido);
+        // Cadastra um novo pedido.
+        Task CadastrarAsync(Pedido pedido);
 
-        // Remove um pedido existente
-        void Remover(Pedido pedido);
+        // Remove um pedido existente.
+        Task RemoverAsync(Pedido pedido);
 
-        // Salva alterações feitas no banco
-        void SalvarAlteracoes();
+        // Retorna todos os itens de pedidos.
+        Task<List<ItemPedido>> ListarItensPedidoAsync();
 
-        // Retorna todos os itens de pedido
-        List<ItemPedido> ListarItensPedido();
+        // Retorna todos os produtos.
+        Task<List<Produto>> ListarProdutosAsync();
 
-        // Retorna todos os produtos
-        List<Produto> ListarProdutos();
+        // Retorna a quantidade de categorias.
+        Task<int> ContarCategoriasAsync();
 
-        // Retorna o total de categorias
-        int ContarCategorias();
-
-        // Retorna o total de pedidos
-        int ContarPedidos();
+        // Retorna a quantidade de pedidos.
+        Task<int> ContarPedidosAsync();
     }
 }

@@ -2,90 +2,95 @@
 using SistemaEstoque.Data.Context;
 using SistemaEstoque.Data.Entities;
 using SistemaEstoque.Data.Repositories.Interfaces;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace SistemaEstoque.Data.Repositories.Implementations
 {
-    // Implementação das operações de banco para Pedido
+    // Implementa as operações de banco de dados relacionadas a pedidos.
     public class PedidoRepository : IPedidoRepository
     {
-        // Contexto usado para acessar o banco de dados
         private readonly AppDbContext _context;
 
-        // Construtor que recebe o AppDbContext por injeção de dependência
         public PedidoRepository(AppDbContext context)
         {
             _context = context;
         }
 
-        // Retorna todos os pedidos com itens, produtos e categorias
-        public List<Pedido> ListarTodos()
+        // Retorna todos os pedidos com itens, produtos e categorias.
+        public async Task<List<Pedido>> ListarTodosAsync()
         {
-            return _context.Pedidos
+            return await _context.Pedidos
                 .Include(pedido => pedido.Itens)
                 .ThenInclude(item => item.Produto)
                 .ThenInclude(produto => produto.Categoria)
-                .ToList();
+                .ToListAsync();
         }
 
-        // Busca um pedido pelo ID com itens e produtos
-        public Pedido BuscarPorId(int id)
+        // Busca um pedido pelo ID com seus itens e produtos.
+        public async Task<Pedido?> BuscarPorIdAsync(int id)
         {
-            return _context.Pedidos
+            return await _context.Pedidos
                 .Include(pedido => pedido.Itens)
                 .ThenInclude(item => item.Produto)
-                .FirstOrDefault(pedido => pedido.Id == id);
+                .FirstOrDefaultAsync(
+                    pedido => pedido.Id == id
+                );
         }
 
-        // Busca um produto pelo ID
-        public Produto BuscarProdutoPorId(int produtoId)
+        // Busca um produto pelo ID.
+        public async Task<Produto?> BuscarProdutoPorIdAsync(
+            int produtoId)
         {
-            return _context.Produtos.FirstOrDefault(produto => produto.Id == produtoId);
+            return await _context.Produtos
+                .FirstOrDefaultAsync(
+                    produto => produto.Id == produtoId
+                );
         }
 
-        // Cadastra um novo pedido
-        public void Cadastrar(Pedido pedido)
+        // Cadastra um novo pedido e salva as alterações de estoque.
+        public async Task CadastrarAsync(Pedido pedido)
         {
             _context.Pedidos.Add(pedido);
-            _context.SaveChanges();
+
+            await _context.SaveChangesAsync();
         }
 
-        // Remove um pedido existente
-        public void Remover(Pedido pedido)
+        // Remove um pedido e salva a devolução do estoque.
+        public async Task RemoverAsync(Pedido pedido)
         {
             _context.Pedidos.Remove(pedido);
-            _context.SaveChanges();
+
+            await _context.SaveChangesAsync();
         }
 
-        // Salva alterações feitas no banco
-        public void SalvarAlteracoes()
+        // Retorna todos os itens vendidos com seus produtos.
+        public async Task<List<ItemPedido>> ListarItensPedidoAsync()
         {
-            _context.SaveChanges();
-        }
-
-        // Retorna todos os itens de pedido
-        public List<ItemPedido> ListarItensPedido()
-        {
-            return _context.ItensPedido
+            return await _context.ItensPedido
                 .Include(item => item.Produto)
-                .ToList();
+                .ToListAsync();
         }
 
-        // Retorna todos os produtos
-        public List<Produto> ListarProdutos()
+        // Retorna todos os produtos cadastrados.
+        public async Task<List<Produto>> ListarProdutosAsync()
         {
-            return _context.Produtos.ToList();
+            return await _context.Produtos
+                .ToListAsync();
         }
 
-        // Retorna o total de categorias
-        public int ContarCategorias()
+        // Retorna a quantidade total de categorias.
+        public async Task<int> ContarCategoriasAsync()
         {
-            return _context.Categorias.Count();
+            return await _context.Categorias
+                .CountAsync();
         }
 
-        // Retorna o total de pedidos
-        public int ContarPedidos()
+        // Retorna a quantidade total de pedidos.
+        public async Task<int> ContarPedidosAsync()
         {
-            return _context.Pedidos.Count();
+            return await _context.Pedidos
+                .CountAsync();
         }
     }
 }

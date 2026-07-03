@@ -1,29 +1,34 @@
 ﻿using SistemaEstoque.Api.Dtos.Pedidos;
 using SistemaEstoque.Data.Entities;
 using SistemaEstoque.Data.Repositories.Interfaces;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace SistemaEstoque.Api.Services
 {
-    // Serviço responsável pelas regras de negócio de pedidos
+    // Serviço responsável pelas regras de negócio de pedidos.
     public class PedidoService
     {
-        // Repositório usado para acessar os dados de pedidos
         private readonly IPedidoRepository _pedidoRepository;
 
-        // Construtor que recebe o repositório por injeção de dependência
-        public PedidoService(IPedidoRepository pedidoRepository)
+        public PedidoService(
+            IPedidoRepository pedidoRepository)
         {
             _pedidoRepository = pedidoRepository;
         }
 
-        // Método responsável por listar todos os pedidos
-        public object ListarPedidos()
+        // Retorna todos os pedidos cadastrados.
+        public async Task<object> ListarPedidosAsync()
         {
-            var pedidos = _pedidoRepository.ListarTodos()
+            var pedidos =
+                await _pedidoRepository.ListarTodosAsync();
+
+            var resposta = pedidos
                 .Select(pedido => new
                 {
                     pedido.Id,
                     pedido.DataPedido,
+
                     Itens = pedido.Itens.Select(item => new
                     {
                         item.Id,
@@ -32,21 +37,28 @@ namespace SistemaEstoque.Api.Services
                         Categoria = item.Produto.Categoria.Nome,
                         item.Quantidade,
                         item.PrecoUnitario,
-                        TotalItem = item.Quantidade * item.PrecoUnitario
+                        TotalItem =
+                            item.Quantidade * item.PrecoUnitario
                     }),
-                    TotalPedido = pedido.Itens.Sum(item => item.Quantidade * item.PrecoUnitario)
+
+                    TotalPedido = pedido.Itens.Sum(
+                        item =>
+                            item.Quantidade * item.PrecoUnitario
+                    )
                 })
                 .ToList();
 
-            return pedidos;
+            return resposta;
         }
 
-        // Método responsável por buscar um pedido pelo ID
-        public object BuscarPedidoPorId(int id)
+        // Busca um pedido pelo identificador.
+        public async Task<object?> BuscarPedidoPorIdAsync(
+            int id)
         {
-            var pedido = _pedidoRepository.BuscarPorId(id);
+            var pedido =
+                await _pedidoRepository.BuscarPorIdAsync(id);
 
-            if (pedido == null)
+            if (pedido is null)
             {
                 return null;
             }
@@ -55,6 +67,7 @@ namespace SistemaEstoque.Api.Services
             {
                 pedido.Id,
                 pedido.DataPedido,
+
                 Itens = pedido.Itens.Select(item => new
                 {
                     item.Id,
@@ -62,48 +75,74 @@ namespace SistemaEstoque.Api.Services
                     Produto = item.Produto.Nome,
                     item.Quantidade,
                     item.PrecoUnitario,
-                    TotalItem = item.Quantidade * item.PrecoUnitario
+                    TotalItem =
+                        item.Quantidade * item.PrecoUnitario
                 }),
-                TotalPedido = pedido.Itens.Sum(item => item.Quantidade * item.PrecoUnitario)
+
+                TotalPedido = pedido.Itens.Sum(
+                    item =>
+                        item.Quantidade * item.PrecoUnitario
+                )
             };
         }
 
-        // Método responsável por registrar um novo pedido
-        public Pedido RegistrarPedido(PedidoCreateDto pedidoDto, out string erro)
+        // Registra um novo pedido.
+        public async Task<(Pedido? Pedido, string? Erro)>
+            RegistrarPedidoAsync(PedidoCreateDto pedidoDto)
         {
-            erro = string.Empty;
-
-            if (pedidoDto.Itens == null || pedidoDto.Itens.Count == 0)
+            if (pedidoDto.Itens is null ||
+                pedidoDto.Itens.Count == 0)
             {
-                erro = "O pedido precisa ter pelo menos um item.";
-                return null;
+                return (
+                    null,
+                    "O pedido precisa ter pelo menos um item."
+                );
             }
 
-            Pedido pedido = new Pedido();
+            var pedido = new Pedido();
 
             foreach (var itemDto in pedidoDto.Itens)
             {
+                if (itemDto is null)
+                {
+                    return (
+                        null,
+                        "O pedido contém um item inválido."
+                    );
+                }
+
                 if (itemDto.Quantidade <= 0)
                 {
-                    erro = "A quantidade do item deve ser maior que zero.";
-                    return null;
+                    return (
+                        null,
+                        "A quantidade do item deve ser maior que zero."
+                    );
                 }
 
-                Produto produto = _pedidoRepository.BuscarProdutoPorId(itemDto.ProdutoId);
+                var produto =
+                    await _pedidoRepository
+                        .BuscarProdutoPorIdAsync(
+                            itemDto.ProdutoId
+                        );
 
-                if (produto == null)
+                if (produto is null)
                 {
-                    erro = $"Produto com ID {itemDto.ProdutoId} não encontrado.";
-                    return null;
+                    return (
+                        null,
+                        $"Produto com ID {itemDto.ProdutoId} não encontrado."
+                    );
                 }
 
-                if (itemDto.Quantidade > produto.QuantidadeEmEstoque)
+                if (itemDto.Quantidade >
+                    produto.QuantidadeEmEstoque)
                 {
-                    erro = $"Estoque insuficiente para o produto {produto.Nome}.";
-                    return null;
+                    return (
+                        null,
+                        $"Estoque insuficiente para o produto {produto.Nome}."
+                    );
                 }
 
-                ItemPedido itemPedido = new ItemPedido
+                var itemPedido = new ItemPedido
                 {
                     ProdutoId = produto.Id,
                     Quantidade = itemDto.Quantidade,
@@ -112,76 +151,104 @@ namespace SistemaEstoque.Api.Services
 
                 pedido.Itens.Add(itemPedido);
 
-                produto.QuantidadeEmEstoque -= itemDto.Quantidade;
+                produto.QuantidadeEmEstoque -=
+                    itemDto.Quantidade;
             }
 
-            _pedidoRepository.Cadastrar(pedido);
+            await _pedidoRepository
+                .CadastrarAsync(pedido);
 
-            return pedido;
+            return (pedido, null);
         }
 
-        // Método responsável por cancelar um pedido e devolver o estoque
-        public bool CancelarPedido(int id)
+        // Cancela um pedido e devolve os itens ao estoque.
+        public async Task<bool> CancelarPedidoAsync(int id)
         {
-            Pedido pedido = _pedidoRepository.BuscarPorId(id);
+            var pedido =
+                await _pedidoRepository.BuscarPorIdAsync(id);
 
-            if (pedido == null)
+            if (pedido is null)
             {
                 return false;
             }
 
             foreach (var item in pedido.Itens)
             {
-                item.Produto.QuantidadeEmEstoque += item.Quantidade;
+                item.Produto.QuantidadeEmEstoque +=
+                    item.Quantidade;
             }
 
-            _pedidoRepository.Remover(pedido);
+            await _pedidoRepository
+                .RemoverAsync(pedido);
 
             return true;
         }
 
-        // Método responsável por gerar os dados do dashboard
-        public object ExibirDashboard()
+        // Gera os dados do dashboard.
+        public async Task<object> ExibirDashboardAsync()
         {
-            var produtos = _pedidoRepository.ListarProdutos();
+            var produtos =
+                await _pedidoRepository.ListarProdutosAsync();
 
-            int totalProdutos = produtos.Count;
+            var totalCategorias =
+                await _pedidoRepository.ContarCategoriasAsync();
 
-            int totalCategorias = _pedidoRepository.ContarCategorias();
+            var totalPedidos =
+                await _pedidoRepository.ContarPedidosAsync();
 
-            int totalPedidos = _pedidoRepository.ContarPedidos();
+            var totalProdutos = produtos.Count;
 
-            int produtosComEstoqueBaixo = produtos
-                .Count(produto => produto.QuantidadeEmEstoque <= produto.EstoqueMinimo);
+            var produtosComEstoqueBaixo = produtos.Count(
+                produto =>
+                    produto.QuantidadeEmEstoque <=
+                    produto.EstoqueMinimo
+            );
 
-            int quantidadeTotalEmEstoque = produtos
-                .Sum(produto => produto.QuantidadeEmEstoque);
+            var quantidadeTotalEmEstoque = produtos.Sum(
+                produto => produto.QuantidadeEmEstoque
+            );
 
-            decimal valorTotalEstoque = produtos
-                .Sum(produto => produto.Preco * produto.QuantidadeEmEstoque);
+            var valorTotalEstoque = produtos.Sum(
+                produto =>
+                    produto.Preco *
+                    produto.QuantidadeEmEstoque
+            );
 
             return new
             {
                 TotalProdutos = totalProdutos,
                 TotalCategorias = totalCategorias,
                 TotalPedidos = totalPedidos,
-                ProdutosComEstoqueBaixo = produtosComEstoqueBaixo,
-                QuantidadeTotalEmEstoque = quantidadeTotalEmEstoque,
-                ValorTotalEstoque = valorTotalEstoque
+                ProdutosComEstoqueBaixo =
+                    produtosComEstoqueBaixo,
+                QuantidadeTotalEmEstoque =
+                    quantidadeTotalEmEstoque,
+                ValorTotalEstoque =
+                    valorTotalEstoque
             };
         }
 
-        // Método responsável por listar produtos mais vendidos
-        public object ListarProdutosMaisVendidos()
+        // Retorna os produtos mais vendidos.
+        public async Task<object>
+            ListarProdutosMaisVendidosAsync()
         {
-            var produtosMaisVendidos = _pedidoRepository.ListarItensPedido()
+            var itens =
+                await _pedidoRepository
+                    .ListarItensPedidoAsync();
+
+            var produtosMaisVendidos = itens
                 .GroupBy(item => item.Produto.Nome)
                 .Select(grupo => new
                 {
                     Produto = grupo.Key,
-                    QuantidadeVendida = grupo.Sum(item => item.Quantidade)
+
+                    QuantidadeVendida = grupo.Sum(
+                        item => item.Quantidade
+                    )
                 })
-                .OrderByDescending(produto => produto.QuantidadeVendida)
+                .OrderByDescending(
+                    produto => produto.QuantidadeVendida
+                )
                 .ToList();
 
             return produtosMaisVendidos;

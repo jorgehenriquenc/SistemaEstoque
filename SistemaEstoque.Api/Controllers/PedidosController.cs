@@ -1,71 +1,96 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SistemaEstoque.Api.Dtos.Pedidos;
 using SistemaEstoque.Api.Services;
-using Microsoft.AspNetCore.Authorization;
+using System.Threading.Tasks;
 
 namespace SistemaEstoque.Api.Controllers
 {
     [Authorize]
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class PedidosController : ControllerBase
     {
         private readonly PedidoService _pedidoService;
 
-        public PedidosController(PedidoService pedidoService)
+        public PedidosController(
+            PedidoService pedidoService)
         {
             _pedidoService = pedidoService;
         }
 
+        // GET: api/Pedidos
         [HttpGet]
-        public IActionResult ListarPedidos()
+        public async Task<IActionResult> ListarPedidos()
         {
-            var pedidos = _pedidoService.ListarPedidos();
+            var pedidos =
+                await _pedidoService.ListarPedidosAsync();
 
             return Ok(pedidos);
         }
 
-        [HttpGet("{id}")]
-        public IActionResult BuscarPedidoPorId(int id)
+        // GET: api/Pedidos/1
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> BuscarPedidoPorId(
+            int id)
         {
-            var pedido = _pedidoService.BuscarPedidoPorId(id);
+            var pedido =
+                await _pedidoService
+                    .BuscarPedidoPorIdAsync(id);
 
-            if (pedido == null)
+            if (pedido is null)
             {
-                return NotFound("Pedido não encontrado.");
+                return NotFound(
+                    "Pedido não encontrado."
+                );
             }
 
             return Ok(pedido);
         }
 
+        // POST: api/Pedidos
         [HttpPost]
-        public IActionResult RegistrarPedido([FromBody] PedidoCreateDto pedidoDto)
+        public async Task<IActionResult> RegistrarPedido(
+            [FromBody] PedidoCreateDto pedidoDto)
         {
-            var pedido = _pedidoService.RegistrarPedido(pedidoDto, out string erro);
+            var resultado =
+                await _pedidoService
+                    .RegistrarPedidoAsync(pedidoDto);
 
-            if (pedido == null)
+            if (resultado.Pedido is null)
             {
-                return BadRequest(erro);
+                return BadRequest(resultado.Erro);
             }
 
-            return CreatedAtAction(nameof(BuscarPedidoPorId), new { id = pedido.Id }, new
-            {
-                pedido.Id,
-                pedido.DataPedido
-            });
+            return CreatedAtAction(
+                nameof(BuscarPedidoPorId),
+                new { id = resultado.Pedido.Id },
+                new
+                {
+                    resultado.Pedido.Id,
+                    resultado.Pedido.DataPedido
+                }
+            );
         }
 
-        [HttpDelete("{id}")]
-        public IActionResult CancelarPedido(int id)
+        // DELETE: api/Pedidos/1
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> CancelarPedido(int id)
         {
-            bool cancelado = _pedidoService.CancelarPedido(id);
+            var cancelado =
+                await _pedidoService
+                    .CancelarPedidoAsync(id);
 
             if (!cancelado)
             {
-                return NotFound("Pedido não encontrado.");
+                return NotFound(
+                    "Pedido não encontrado."
+                );
             }
 
-            return Ok("Pedido cancelado e estoque devolvido com sucesso.");
+            return Ok(
+                "Pedido cancelado e estoque devolvido com sucesso."
+            );
         }
     }
 }

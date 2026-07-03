@@ -12,7 +12,8 @@ namespace SistemaEstoque.Api.Controllers
     {
         private readonly CategoriaService _categoriaService;
 
-        public CategoriasController(CategoriaService categoriaService)
+        public CategoriasController(
+            CategoriaService categoriaService)
         {
             _categoriaService = categoriaService;
         }
@@ -22,9 +23,11 @@ namespace SistemaEstoque.Api.Controllers
         [ProducesResponseType(
             typeof(List<CategoriaResponseDto>),
             StatusCodes.Status200OK)]
-        public ActionResult<List<CategoriaResponseDto>> ListarCategorias()
+        public async Task<ActionResult<List<CategoriaResponseDto>>>
+            ListarCategorias()
         {
-            var categorias = _categoriaService.ListarCategorias();
+            var categorias =
+                await _categoriaService.ListarCategoriasAsync();
 
             return Ok(categorias);
         }
@@ -35,13 +38,18 @@ namespace SistemaEstoque.Api.Controllers
             typeof(CategoriaResponseDto),
             StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public ActionResult<CategoriaResponseDto> BuscarCategoriaPorId(int id)
+        public async Task<ActionResult<CategoriaResponseDto>>
+            BuscarCategoriaPorId(int id)
         {
-            var categoria = _categoriaService.BuscarCategoriaPorId(id);
+            var categoria =
+                await _categoriaService
+                    .BuscarCategoriaPorIdAsync(id);
 
             if (categoria is null)
             {
-                return NotFound("Categoria não encontrada.");
+                return NotFound(
+                    "Categoria não encontrada."
+                );
             }
 
             return Ok(categoria);
@@ -53,16 +61,19 @@ namespace SistemaEstoque.Api.Controllers
             typeof(CategoriaResponseDto),
             StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public ActionResult<CategoriaResponseDto> CadastrarCategoria(
-            [FromBody] CategoriaCreateDto categoriaDto)
+        public async Task<ActionResult<CategoriaResponseDto>>
+            CadastrarCategoria(
+                [FromBody] CategoriaCreateDto categoriaDto)
         {
             var categoria =
-                _categoriaService.CadastrarCategoria(categoriaDto);
+                await _categoriaService
+                    .CadastrarCategoriaAsync(categoriaDto);
 
             return CreatedAtAction(
                 nameof(BuscarCategoriaPorId),
                 new { id = categoria.Id },
-                categoria);
+                categoria
+            );
         }
 
         // PUT: api/Categorias/1
@@ -72,16 +83,23 @@ namespace SistemaEstoque.Api.Controllers
             StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public ActionResult<CategoriaResponseDto> AtualizarCategoria(
-            int id,
-            [FromBody] CategoriaUpdateDto categoriaDto)
+        public async Task<ActionResult<CategoriaResponseDto>>
+            AtualizarCategoria(
+                int id,
+                [FromBody] CategoriaUpdateDto categoriaDto)
         {
             var categoria =
-                _categoriaService.AtualizarCategoria(id, categoriaDto);
+                await _categoriaService
+                    .AtualizarCategoriaAsync(
+                        id,
+                        categoriaDto
+                    );
 
             if (categoria is null)
             {
-                return NotFound("Categoria não encontrada.");
+                return NotFound(
+                    "Categoria não encontrada."
+                );
             }
 
             return Ok(categoria);
@@ -92,23 +110,32 @@ namespace SistemaEstoque.Api.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        public IActionResult RemoverCategoria(int id)
+        public async Task<IActionResult> RemoverCategoria(int id)
         {
             var categoria =
-                _categoriaService.BuscarCategoriaPorId(id);
+                await _categoriaService
+                    .BuscarCategoriaPorIdAsync(id);
 
             if (categoria is null)
             {
-                return NotFound("Categoria não encontrada.");
+                return NotFound(
+                    "Categoria não encontrada."
+                );
             }
 
-            if (_categoriaService.CategoriaPossuiProdutos(id))
+            var possuiProdutos =
+                await _categoriaService
+                    .CategoriaPossuiProdutosAsync(id);
+
+            if (possuiProdutos)
             {
                 return Conflict(
-                    "Não é possível remover uma categoria que possui produtos cadastrados.");
+                    "Não é possível remover uma categoria que possui produtos cadastrados."
+                );
             }
 
-            _categoriaService.RemoverCategoria(id);
+            await _categoriaService
+                .RemoverCategoriaAsync(id);
 
             return NoContent();
         }

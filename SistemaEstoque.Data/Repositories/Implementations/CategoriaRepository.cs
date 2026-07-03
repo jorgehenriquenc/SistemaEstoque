@@ -1,58 +1,63 @@
-﻿using SistemaEstoque.Data.Context;
+﻿using Microsoft.EntityFrameworkCore;
+using SistemaEstoque.Data.Context;
 using SistemaEstoque.Data.Entities;
 using SistemaEstoque.Data.Repositories.Interfaces;
 
 namespace SistemaEstoque.Data.Repositories.Implementations
 {
-    // Implementação das operações de banco para Categoria
+    // Implementa as operações de banco de dados para Categoria.
     public class CategoriaRepository : ICategoriaRepository
     {
-        // Contexto usado para acessar o banco de dados
         private readonly AppDbContext _context;
 
-        // Construtor que recebe o AppDbContext por injeção de dependência
         public CategoriaRepository(AppDbContext context)
         {
             _context = context;
         }
 
-        // Retorna todas as categorias cadastradas
-        public List<Categoria> ListarTodas()
+        // Retorna todas as categorias cadastradas.
+        public async Task<List<Categoria>> ListarTodasAsync()
         {
-            return _context.Categorias.ToList();
+            return await _context.Categorias
+                .ToListAsync();
         }
 
-        // Busca uma categoria pelo ID
-        public Categoria BuscarPorId(int id)
+        // Busca uma categoria pelo identificador.
+        public async Task<Categoria?> BuscarPorIdAsync(int id)
         {
-            return _context.Categorias.FirstOrDefault(categoria => categoria.Id == id);
+            return await _context.Categorias
+                .FirstOrDefaultAsync(categoria => categoria.Id == id);
         }
 
-        // Cadastra uma nova categoria
-        public void Cadastrar(Categoria categoria)
+        // Cadastra uma nova categoria.
+        public async Task CadastrarAsync(Categoria categoria)
         {
             _context.Categorias.Add(categoria);
-            _context.SaveChanges();
+
+            await _context.SaveChangesAsync();
         }
 
-        // Atualiza uma categoria existente
-        public void Atualizar(Categoria categoria)
+        // Atualiza uma categoria existente.
+        public async Task AtualizarAsync(Categoria categoria)
         {
             _context.Categorias.Update(categoria);
-            _context.SaveChanges();
+
+            await _context.SaveChangesAsync();
         }
 
-        // Remove uma categoria existente
-        public void Remover(Categoria categoria)
+        // Remove uma categoria existente.
+        public async Task RemoverAsync(Categoria categoria)
         {
             _context.Categorias.Remove(categoria);
-            _context.SaveChanges();
+
+            await _context.SaveChangesAsync();
         }
 
-        // Verifica se uma categoria possui produtos vinculados
-        public bool PossuiProdutos(int categoriaId)
+        // Verifica se existem produtos vinculados à categoria.
+        public async Task<bool> PossuiProdutosAsync(int categoriaId)
         {
-            return _context.Produtos.Any(produto => produto.CategoriaId == categoriaId);
+            return await _context.Produtos
+                .AnyAsync(produto => produto.CategoriaId == categoriaId);
         }
     }
 }

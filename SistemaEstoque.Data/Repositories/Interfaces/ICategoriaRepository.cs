@@ -2,25 +2,25 @@
 
 namespace SistemaEstoque.Data.Repositories.Interfaces
 {
-    // Interface que define as operações de banco para Categoria
+    // Define as operações de banco de dados para Categoria.
     public interface ICategoriaRepository
     {
-        // Retorna todas as categorias cadastradas
-        List<Categoria> ListarTodas();
+        // Retorna todas as categorias cadastradas.
+        Task<List<Categoria>> ListarTodasAsync();
 
-        // Busca uma categoria pelo ID
-        Categoria BuscarPorId(int id);
+        // Busca uma categoria pelo identificador.
+        Task<Categoria?> BuscarPorIdAsync(int id);
 
-        // Cadastra uma nova categoria
-        void Cadastrar(Categoria categoria);
+        // Cadastra uma nova categoria.
+        Task CadastrarAsync(Categoria categoria);
 
-        // Atualiza uma categoria existente
-        void Atualizar(Categoria categoria);
+        // Atualiza uma categoria existente.
+        Task AtualizarAsync(Categoria categoria);
 
-        // Remove uma categoria existente
-        void Remover(Categoria categoria);
+        // Remove uma categoria existente.
+        Task RemoverAsync(Categoria categoria);
 
-        // Verifica se uma categoria possui produtos vinculados
-        bool PossuiProdutos(int categoriaId);
+        // Verifica se existem produtos vinculados à categoria.
+        Task<bool> PossuiProdutosAsync(int categoriaId);
     }
 }

@@ -7,28 +7,32 @@ namespace SistemaEstoque.Api.Services
     // Serviço responsável pelas regras de negócio de categorias.
     public class CategoriaService
     {
-        // Repositório utilizado para acessar os dados de categorias.
         private readonly ICategoriaRepository _categoriaRepository;
 
-        // O repositório é recebido por injeção de dependência.
-        public CategoriaService(ICategoriaRepository categoriaRepository)
+        public CategoriaService(
+            ICategoriaRepository categoriaRepository)
         {
             _categoriaRepository = categoriaRepository;
         }
 
         // Retorna todas as categorias cadastradas.
-        public List<CategoriaResponseDto> ListarCategorias()
+        public async Task<List<CategoriaResponseDto>>
+            ListarCategoriasAsync()
         {
-            return _categoriaRepository
-                .ListarTodas()
+            var categorias =
+                await _categoriaRepository.ListarTodasAsync();
+
+            return categorias
                 .Select(MapearParaResponseDto)
                 .ToList();
         }
 
         // Busca uma categoria pelo identificador.
-        public CategoriaResponseDto? BuscarCategoriaPorId(int id)
+        public async Task<CategoriaResponseDto?>
+            BuscarCategoriaPorIdAsync(int id)
         {
-            var categoria = _categoriaRepository.BuscarPorId(id);
+            var categoria =
+                await _categoriaRepository.BuscarPorIdAsync(id);
 
             if (categoria is null)
             {
@@ -39,25 +43,29 @@ namespace SistemaEstoque.Api.Services
         }
 
         // Cadastra uma nova categoria.
-        public CategoriaResponseDto CadastrarCategoria(
-            CategoriaCreateDto categoriaDto)
+        public async Task<CategoriaResponseDto>
+            CadastrarCategoriaAsync(
+                CategoriaCreateDto categoriaDto)
         {
             var categoria = new Categoria
             {
                 Nome = categoriaDto.Nome.Trim()
             };
 
-            _categoriaRepository.Cadastrar(categoria);
+            await _categoriaRepository
+                .CadastrarAsync(categoria);
 
             return MapearParaResponseDto(categoria);
         }
 
         // Atualiza uma categoria existente.
-        public CategoriaResponseDto? AtualizarCategoria(
-            int id,
-            CategoriaUpdateDto categoriaDto)
+        public async Task<CategoriaResponseDto?>
+            AtualizarCategoriaAsync(
+                int id,
+                CategoriaUpdateDto categoriaDto)
         {
-            var categoria = _categoriaRepository.BuscarPorId(id);
+            var categoria =
+                await _categoriaRepository.BuscarPorIdAsync(id);
 
             if (categoria is null)
             {
@@ -66,33 +74,38 @@ namespace SistemaEstoque.Api.Services
 
             categoria.Nome = categoriaDto.Nome.Trim();
 
-            _categoriaRepository.Atualizar(categoria);
+            await _categoriaRepository
+                .AtualizarAsync(categoria);
 
             return MapearParaResponseDto(categoria);
         }
 
         // Verifica se existem produtos vinculados à categoria.
-        public bool CategoriaPossuiProdutos(int id)
+        public async Task<bool>
+            CategoriaPossuiProdutosAsync(int id)
         {
-            return _categoriaRepository.PossuiProdutos(id);
+            return await _categoriaRepository
+                .PossuiProdutosAsync(id);
         }
 
         // Remove uma categoria existente.
-        public bool RemoverCategoria(int id)
+        public async Task<bool> RemoverCategoriaAsync(int id)
         {
-            var categoria = _categoriaRepository.BuscarPorId(id);
+            var categoria =
+                await _categoriaRepository.BuscarPorIdAsync(id);
 
             if (categoria is null)
             {
                 return false;
             }
 
-            _categoriaRepository.Remover(categoria);
+            await _categoriaRepository
+                .RemoverAsync(categoria);
 
             return true;
         }
 
-        // Converte uma entidade Categoria em um DTO de resposta.
+        // Converte a entidade Categoria em DTO de resposta.
         private static CategoriaResponseDto MapearParaResponseDto(
             Categoria categoria)
         {

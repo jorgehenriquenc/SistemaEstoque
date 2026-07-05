@@ -15,15 +15,16 @@ namespace SistemaEstoque.Data.Repositories.Implementations
             _context = context;
         }
 
-        // Retorna todos os produtos cadastrados com suas categorias.
+        // Retorna todos os produtos com suas categorias.
         public async Task<List<Produto>> ListarTodosAsync()
         {
             return await _context.Produtos
+                .AsNoTracking()
                 .Include(produto => produto.Categoria)
                 .ToListAsync();
         }
 
-        // Busca um produto pelo identificador com sua categoria.
+        // Busca um produto pelo identificador.
         public async Task<Produto?> BuscarPorIdAsync(int id)
         {
             return await _context.Produtos
@@ -33,12 +34,13 @@ namespace SistemaEstoque.Data.Repositories.Implementations
                 );
         }
 
-        // Verifica se a categoria existe.
-        public async Task<bool> CategoriaExisteAsync(
+        // Busca uma categoria pelo identificador.
+        public async Task<Categoria?> BuscarCategoriaPorIdAsync(
             int categoriaId)
         {
             return await _context.Categorias
-                .AnyAsync(
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
                     categoria => categoria.Id == categoriaId
                 );
         }
@@ -51,11 +53,9 @@ namespace SistemaEstoque.Data.Repositories.Implementations
             await _context.SaveChangesAsync();
         }
 
-        // Atualiza um produto.
+        // Salva as alterações de um produto já rastreado.
         public async Task AtualizarAsync(Produto produto)
         {
-            _context.Produtos.Update(produto);
-
             await _context.SaveChangesAsync();
         }
 

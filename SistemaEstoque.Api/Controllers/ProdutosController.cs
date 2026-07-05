@@ -20,7 +20,12 @@ namespace SistemaEstoque.Api.Controllers
 
         // GET: api/Produtos
         [HttpGet]
-        public async Task<IActionResult> ListarProdutos()
+        [ProducesResponseType(
+            typeof(List<ProdutoResponseDto>),
+            StatusCodes.Status200OK)]
+        public async Task<
+            ActionResult<List<ProdutoResponseDto>>>
+            ListarProdutos()
         {
             var produtos =
                 await _produtoService.ListarProdutosAsync();
@@ -30,41 +35,34 @@ namespace SistemaEstoque.Api.Controllers
 
         // GET: api/Produtos/1
         [HttpGet("{id:int}")]
-        public async Task<IActionResult> BuscarProdutoPorId(
-            int id)
+        [ProducesResponseType(
+            typeof(ProdutoResponseDto),
+            StatusCodes.Status200OK)]
+        [ProducesResponseType(
+            typeof(ProblemDetails),
+            StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ProdutoResponseDto>>
+            BuscarProdutoPorId(int id)
         {
             var produto =
                 await _produtoService
                     .BuscarProdutoPorIdAsync(id);
-
-            if (produto is null)
-            {
-                return NotFound(
-                    "Produto não encontrado."
-                );
-            }
 
             return Ok(produto);
         }
 
         // POST: api/Produtos
         [HttpPost]
-        public async Task<IActionResult> CadastrarProduto(
-            [FromBody] ProdutoCreateDto produtoDto)
+        [ProducesResponseType(
+            typeof(ProdutoResponseDto),
+            StatusCodes.Status201Created)]
+        [ProducesResponseType(
+            typeof(ProblemDetails),
+            StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ProdutoResponseDto>>
+            CadastrarProduto(
+                [FromBody] ProdutoCreateDto produtoDto)
         {
-            var categoriaExiste =
-                await _produtoService
-                    .CategoriaExisteAsync(
-                        produtoDto.CategoriaId
-                    );
-
-            if (!categoriaExiste)
-            {
-                return BadRequest(
-                    "Categoria não encontrada."
-                );
-            }
-
             var produto =
                 await _produtoService
                     .CadastrarProdutoAsync(produtoDto);
@@ -72,75 +70,50 @@ namespace SistemaEstoque.Api.Controllers
             return CreatedAtAction(
                 nameof(BuscarProdutoPorId),
                 new { id = produto.Id },
-                new
-                {
-                    produto.Id,
-                    produto.Nome,
-                    produto.Preco,
-                    produto.QuantidadeEmEstoque,
-                    produto.EstoqueMinimo,
-                    produto.Ativo,
-                    produto.CategoriaId
-                }
+                produto
             );
         }
 
         // PUT: api/Produtos/1
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> AtualizarProduto(
-            int id,
-            [FromBody] ProdutoUpdateDto produtoDto)
+        [ProducesResponseType(
+            typeof(ProdutoResponseDto),
+            StatusCodes.Status200OK)]
+        [ProducesResponseType(
+            typeof(ProblemDetails),
+            StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(
+            typeof(ProblemDetails),
+            StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ProdutoResponseDto>>
+            AtualizarProduto(
+                int id,
+                [FromBody] ProdutoUpdateDto produtoDto)
         {
-            var categoriaExiste =
-                await _produtoService
-                    .CategoriaExisteAsync(
-                        produtoDto.CategoriaId
-                    );
-
-            if (!categoriaExiste)
-            {
-                return BadRequest(
-                    "Categoria não encontrada."
-                );
-            }
-
-            var atualizado =
+            var produto =
                 await _produtoService
                     .AtualizarProdutoAsync(
                         id,
                         produtoDto
                     );
 
-            if (!atualizado)
-            {
-                return NotFound(
-                    "Produto não encontrado."
-                );
-            }
-
-            return Ok(
-                "Produto atualizado com sucesso."
-            );
+            return Ok(produto);
         }
 
         // DELETE: api/Produtos/1
         [HttpDelete("{id:int}")]
-        public async Task<IActionResult> RemoverProduto(int id)
+        [ProducesResponseType(
+            StatusCodes.Status204NoContent)]
+        [ProducesResponseType(
+            typeof(ProblemDetails),
+            StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> RemoverProduto(
+            int id)
         {
-            var removido =
-                await _produtoService
-                    .RemoverProdutoAsync(id);
+            await _produtoService
+                .RemoverProdutoAsync(id);
 
-            if (!removido)
-            {
-                return NotFound(
-                    "Produto não encontrado."
-                );
-            }
-
-            return Ok(
-                "Produto removido com sucesso."
-            );
+            return NoContent();
         }
     }
 }

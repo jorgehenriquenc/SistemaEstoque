@@ -1,4 +1,5 @@
 ﻿using SistemaEstoque.Api.Dtos.Produtos;
+using SistemaEstoque.Api.Exceptions;
 using SistemaEstoque.Data.Entities;
 using SistemaEstoque.Data.Repositories.Interfaces;
 
@@ -16,65 +17,54 @@ namespace SistemaEstoque.Api.Services
         }
 
         // Retorna todos os produtos cadastrados.
-        public async Task<object> ListarProdutosAsync()
+        public async Task<List<ProdutoResponseDto>>
+            ListarProdutosAsync()
         {
             var produtos =
                 await _produtoRepository.ListarTodosAsync();
 
-            var resposta = produtos
-                .Select(produto => new
-                {
-                    produto.Id,
-                    produto.Nome,
-                    produto.Preco,
-                    produto.QuantidadeEmEstoque,
-                    produto.EstoqueMinimo,
-                    produto.Ativo,
-                    produto.CategoriaId,
-                    Categoria = produto.Categoria?.Nome
-                })
+            return produtos
+                .Select(produto =>
+                    MapearParaResponseDto(produto)
+                )
                 .ToList();
-
-            return resposta;
         }
 
         // Busca um produto pelo identificador.
-        public async Task<object?> BuscarProdutoPorIdAsync(
-            int id)
+        public async Task<ProdutoResponseDto>
+            BuscarProdutoPorIdAsync(int id)
         {
             var produto =
                 await _produtoRepository.BuscarPorIdAsync(id);
 
             if (produto is null)
             {
-                return null;
+                throw new NotFoundException(
+                    "Produto não encontrado."
+                );
             }
 
-            return new
-            {
-                produto.Id,
-                produto.Nome,
-                produto.Preco,
-                produto.QuantidadeEmEstoque,
-                produto.EstoqueMinimo,
-                produto.Ativo,
-                produto.CategoriaId,
-                Categoria = produto.Categoria?.Nome
-            };
-        }
-
-        // Verifica se uma categoria existe.
-        public async Task<bool> CategoriaExisteAsync(
-            int categoriaId)
-        {
-            return await _produtoRepository
-                .CategoriaExisteAsync(categoriaId);
+            return MapearParaResponseDto(produto);
         }
 
         // Cadastra um novo produto.
-        public async Task<Produto> CadastrarProdutoAsync(
-            ProdutoCreateDto produtoDto)
+        public async Task<ProdutoResponseDto>
+            CadastrarProdutoAsync(
+                ProdutoCreateDto produtoDto)
         {
+            var categoria =
+                await _produtoRepository
+                    .BuscarCategoriaPorIdAsync(
+                        produtoDto.CategoriaId
+                    );
+
+            if (categoria is null)
+            {
+                throw new BusinessValidationException(
+                    "Categoria não encontrada."
+                );
+            }
+
             var produto = new Produto
             {
                 Nome = produtoDto.Nome.Trim(),
@@ -91,53 +81,108 @@ namespace SistemaEstoque.Api.Services
             await _produtoRepository
                 .CadastrarAsync(produto);
 
-            return produto;
+            return MapearParaResponseDto(
+                produto,
+                categoria.Nome
+            );
         }
 
         // Atualiza um produto existente.
-        public async Task<bool> AtualizarProdutoAsync(
-            int id,
-            ProdutoUpdateDto produtoDto)
+        public async Task<ProdutoResponseDto>
+            AtualizarProdutoAsync(
+                int id,
+                ProdutoUpdateDto produtoDto)
         {
             var produto =
                 await _produtoRepository.BuscarPorIdAsync(id);
 
             if (produto is null)
             {
-                return false;
+                throw new NotFoundException(
+                    "Produto não encontrado."
+                );
             }
 
-            produto.Nome = produtoDto.Nome.Trim();
-            produto.Preco = produtoDto.Preco;
+            var categoria =
+                await _produtoRepository
+                    .BuscarCategoriaPorIdAsync(
+                        produtoDto.CategoriaId
+                    );
+
+            if (categoria is null)
+            {
+                throw new BusinessValidationException(
+                    "Categoria não encontrada."
+                );
+            }
+
+            produto.Nome =
+                produtoDto.Nome.Trim();
+
+            produto.Preco =
+                produtoDto.Preco;
+
             produto.QuantidadeEmEstoque =
                 produtoDto.QuantidadeEmEstoque;
+
             produto.EstoqueMinimo =
                 produtoDto.EstoqueMinimo;
-            produto.Ativo = produtoDto.Ativo;
+
+            produto.Ativo =
+                produtoDto.Ativo;
+
             produto.CategoriaId =
                 produtoDto.CategoriaId;
 
             await _produtoRepository
                 .AtualizarAsync(produto);
 
-            return true;
+            return MapearParaResponseDto(
+                produto,
+                categoria.Nome
+            );
         }
 
         // Remove um produto existente.
-        public async Task<bool> RemoverProdutoAsync(int id)
+        public async Task RemoverProdutoAsync(int id)
         {
             var produto =
                 await _produtoRepository.BuscarPorIdAsync(id);
 
             if (produto is null)
             {
-                return false;
+                throw new NotFoundException(
+                    "Produto não encontrado."
+                );
             }
 
             await _produtoRepository
                 .RemoverAsync(produto);
+        }
 
-            return true;
+        // Converte a entidade Produto em DTO de resposta.
+        private static ProdutoResponseDto
+            MapearParaResponseDto(
+                Produto produto,
+                string? nomeCategoria = null)
+        {
+            return new ProdutoResponseDto
+            {
+                Id = produto.Id,
+                Nome = produto.Nome,
+                Preco = produto.Preco,
+                QuantidadeEmEstoque =
+                    produto.QuantidadeEmEstoque,
+                EstoqueMinimo =
+                    produto.EstoqueMinimo,
+                Ativo = produto.Ativo,
+                CategoriaId =
+                    produto.CategoriaId,
+                Categoria =
+                    nomeCategoria
+                    ?? produto.Categoria?.Nome
+                    ?? string.Empty
+            };
         }
     }
 }

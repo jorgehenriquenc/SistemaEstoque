@@ -5,22 +5,24 @@ namespace SistemaEstoque.Data.Repositories.Interfaces
     // Define as operações de banco de dados para Produto.
     public interface IProdutoRepository
     {
-        // Retorna todos os produtos cadastrados.
+        // Retorna todos os produtos com suas categorias.
         Task<List<Produto>> ListarTodosAsync();
 
         // Busca um produto pelo identificador.
         Task<Produto?> BuscarPorIdAsync(int id);
 
-        // Verifica se uma categoria existe.
-        Task<bool> CategoriaExisteAsync(int categoriaId);
+        // Busca uma categoria pelo identificador.
+        Task<Categoria?> BuscarCategoriaPorIdAsync(
+            int categoriaId
+        );
 
-        // Cadastra um novo produto.
+        // Cadastra um produto.
         Task CadastrarAsync(Produto produto);
 
-        // Atualiza um produto existente.
+        // Salva as alterações realizadas no produto.
         Task AtualizarAsync(Produto produto);
 
-        // Remove um produto existente.
+        // Remove um produto.
         Task RemoverAsync(Produto produto);
     }
 }

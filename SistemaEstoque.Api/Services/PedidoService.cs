@@ -1,257 +1,204 @@
-﻿using SistemaEstoque.Api.Dtos.Pedidos;
+﻿using SistemaEstoque.Api.Dtos.Dashboard;
+using SistemaEstoque.Api.Dtos.Pedidos;
+using SistemaEstoque.Api.Dtos.Relatorios;
+using SistemaEstoque.Api.Exceptions;
 using SistemaEstoque.Data.Entities;
 using SistemaEstoque.Data.Repositories.Interfaces;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace SistemaEstoque.Api.Services
 {
-    // Serviço responsável pelas regras de negócio de pedidos.
     public class PedidoService
     {
         private readonly IPedidoRepository _pedidoRepository;
 
-        public PedidoService(
-            IPedidoRepository pedidoRepository)
+        public PedidoService(IPedidoRepository pedidoRepository)
         {
             _pedidoRepository = pedidoRepository;
         }
 
-        // Retorna todos os pedidos cadastrados.
-        public async Task<object> ListarPedidosAsync()
+        public async Task<List<PedidoResponseDto>> ListarPedidosAsync()
         {
-            var pedidos =
-                await _pedidoRepository.ListarTodosAsync();
+            var pedidos = await _pedidoRepository.ListarTodosAsync();
 
-            var resposta = pedidos
-                .Select(pedido => new
-                {
-                    pedido.Id,
-                    pedido.DataPedido,
-
-                    Itens = pedido.Itens.Select(item => new
-                    {
-                        item.Id,
-                        item.ProdutoId,
-                        Produto = item.Produto.Nome,
-                        Categoria = item.Produto.Categoria.Nome,
-                        item.Quantidade,
-                        item.PrecoUnitario,
-                        TotalItem =
-                            item.Quantidade * item.PrecoUnitario
-                    }),
-
-                    TotalPedido = pedido.Itens.Sum(
-                        item =>
-                            item.Quantidade * item.PrecoUnitario
-                    )
-                })
+            return pedidos
+                .Select(MapearParaResponseDto)
                 .ToList();
-
-            return resposta;
         }
 
-        // Busca um pedido pelo identificador.
-        public async Task<object?> BuscarPedidoPorIdAsync(
-            int id)
+        public async Task<PedidoResponseDto> BuscarPedidoPorIdAsync(int id)
         {
-            var pedido =
-                await _pedidoRepository.BuscarPorIdAsync(id);
+            var pedido = await _pedidoRepository.BuscarPorIdAsync(id);
 
             if (pedido is null)
             {
-                return null;
+                throw new NotFoundException("Pedido não encontrado.");
             }
 
-            return new
-            {
-                pedido.Id,
-                pedido.DataPedido,
-
-                Itens = pedido.Itens.Select(item => new
-                {
-                    item.Id,
-                    item.ProdutoId,
-                    Produto = item.Produto.Nome,
-                    item.Quantidade,
-                    item.PrecoUnitario,
-                    TotalItem =
-                        item.Quantidade * item.PrecoUnitario
-                }),
-
-                TotalPedido = pedido.Itens.Sum(
-                    item =>
-                        item.Quantidade * item.PrecoUnitario
-                )
-            };
+            return MapearParaResponseDto(pedido);
         }
 
-        // Registra um novo pedido.
-        public async Task<(Pedido? Pedido, string? Erro)>
-            RegistrarPedidoAsync(PedidoCreateDto pedidoDto)
+        public async Task<PedidoResponseDto> RegistrarPedidoAsync(PedidoCreateDto pedidoDto)
         {
-            if (pedidoDto.Itens is null ||
-                pedidoDto.Itens.Count == 0)
+            if (pedidoDto.Itens is null || pedidoDto.Itens.Count == 0)
             {
-                return (
-                    null,
-                    "O pedido precisa ter pelo menos um item."
-                );
+                throw new BusinessValidationException("O pedido precisa ter pelo menos um item.");
             }
 
-            var pedido = new Pedido();
+            if (pedidoDto.Itens.Any(item => item is null))
+            {
+                throw new BusinessValidationException("O pedido contém um item inválido.");
+            }
 
             foreach (var itemDto in pedidoDto.Itens)
             {
-                if (itemDto is null)
+                if (itemDto.ProdutoId <= 0)
                 {
-                    return (
-                        null,
-                        "O pedido contém um item inválido."
-                    );
+                    throw new BusinessValidationException("O produto é obrigatório.");
                 }
 
                 if (itemDto.Quantidade <= 0)
                 {
-                    return (
-                        null,
-                        "A quantidade do item deve ser maior que zero."
-                    );
+                    throw new BusinessValidationException("A quantidade do item deve ser maior que zero.");
                 }
+            }
 
-                var produto =
-                    await _pedidoRepository
-                        .BuscarProdutoPorIdAsync(
-                            itemDto.ProdutoId
-                        );
+            var itensAgrupados = pedidoDto.Itens
+                .GroupBy(item => item.ProdutoId)
+                .Select(grupo => new
+                {
+                    ProdutoId = grupo.Key,
+                    Quantidade = grupo.Sum(item => item.Quantidade)
+                })
+                .ToList();
+
+            var pedido = new Pedido();
+
+            foreach (var itemAgrupado in itensAgrupados)
+            {
+                var produto = await _pedidoRepository.BuscarProdutoPorIdAsync(itemAgrupado.ProdutoId);
 
                 if (produto is null)
                 {
-                    return (
-                        null,
-                        $"Produto com ID {itemDto.ProdutoId} não encontrado."
-                    );
+                    throw new NotFoundException($"Produto com ID {itemAgrupado.ProdutoId} não encontrado.");
                 }
 
-                if (itemDto.Quantidade >
-                    produto.QuantidadeEmEstoque)
+                if (!produto.Ativo)
                 {
-                    return (
-                        null,
-                        $"Estoque insuficiente para o produto {produto.Nome}."
-                    );
+                    throw new BusinessValidationException($"O produto '{produto.Nome}' está inativo e não pode ser vendido.");
+                }
+
+                if (itemAgrupado.Quantidade > produto.QuantidadeEmEstoque)
+                {
+                    throw new BusinessValidationException($"Estoque insuficiente para o produto '{produto.Nome}'.");
                 }
 
                 var itemPedido = new ItemPedido
                 {
                     ProdutoId = produto.Id,
-                    Quantidade = itemDto.Quantidade,
+                    Quantidade = itemAgrupado.Quantidade,
                     PrecoUnitario = produto.Preco
                 };
 
                 pedido.Itens.Add(itemPedido);
 
-                produto.QuantidadeEmEstoque -=
-                    itemDto.Quantidade;
+                produto.QuantidadeEmEstoque -= itemAgrupado.Quantidade;
             }
 
-            await _pedidoRepository
-                .CadastrarAsync(pedido);
+            await _pedidoRepository.CadastrarAsync(pedido);
 
-            return (pedido, null);
+            var pedidoCompleto = await _pedidoRepository.BuscarPorIdAsync(pedido.Id);
+
+            if (pedidoCompleto is null)
+            {
+                throw new NotFoundException("Pedido cadastrado, mas não foi possível carregá-lo.");
+            }
+
+            return MapearParaResponseDto(pedidoCompleto);
         }
 
-        // Cancela um pedido e devolve os itens ao estoque.
-        public async Task<bool> CancelarPedidoAsync(int id)
+        public async Task CancelarPedidoAsync(int id)
         {
-            var pedido =
-                await _pedidoRepository.BuscarPorIdAsync(id);
+            var pedido = await _pedidoRepository.BuscarPorIdAsync(id);
 
             if (pedido is null)
             {
-                return false;
+                throw new NotFoundException("Pedido não encontrado.");
             }
 
             foreach (var item in pedido.Itens)
             {
-                item.Produto.QuantidadeEmEstoque +=
-                    item.Quantidade;
+                item.Produto.QuantidadeEmEstoque += item.Quantidade;
             }
 
-            await _pedidoRepository
-                .RemoverAsync(pedido);
-
-            return true;
+            await _pedidoRepository.RemoverAsync(pedido);
         }
 
-        // Gera os dados do dashboard.
-        public async Task<object> ExibirDashboardAsync()
+        public async Task<DashboardResponseDto> ExibirDashboardAsync()
         {
-            var produtos =
-                await _pedidoRepository.ListarProdutosAsync();
+            var produtos = await _pedidoRepository.ListarProdutosAsync();
+            var totalCategorias = await _pedidoRepository.ContarCategoriasAsync();
+            var totalPedidos = await _pedidoRepository.ContarPedidosAsync();
 
-            var totalCategorias =
-                await _pedidoRepository.ContarCategoriasAsync();
-
-            var totalPedidos =
-                await _pedidoRepository.ContarPedidosAsync();
-
-            var totalProdutos = produtos.Count;
-
-            var produtosComEstoqueBaixo = produtos.Count(
-                produto =>
-                    produto.QuantidadeEmEstoque <=
-                    produto.EstoqueMinimo
-            );
-
-            var quantidadeTotalEmEstoque = produtos.Sum(
-                produto => produto.QuantidadeEmEstoque
-            );
-
-            var valorTotalEstoque = produtos.Sum(
-                produto =>
-                    produto.Preco *
-                    produto.QuantidadeEmEstoque
-            );
-
-            return new
+            return new DashboardResponseDto
             {
-                TotalProdutos = totalProdutos,
+                TotalProdutos = produtos.Count,
                 TotalCategorias = totalCategorias,
                 TotalPedidos = totalPedidos,
-                ProdutosComEstoqueBaixo =
-                    produtosComEstoqueBaixo,
-                QuantidadeTotalEmEstoque =
-                    quantidadeTotalEmEstoque,
-                ValorTotalEstoque =
-                    valorTotalEstoque
+                ProdutosComEstoqueBaixo = produtos.Count(produto =>
+                    produto.QuantidadeEmEstoque <= produto.EstoqueMinimo
+                ),
+                QuantidadeTotalEmEstoque = produtos.Sum(produto =>
+                    produto.QuantidadeEmEstoque
+                ),
+                ValorTotalEstoque = produtos.Sum(produto =>
+                    produto.Preco * produto.QuantidadeEmEstoque
+                )
             };
         }
 
-        // Retorna os produtos mais vendidos.
-        public async Task<object>
-            ListarProdutosMaisVendidosAsync()
+        public async Task<List<ProdutoMaisVendidoResponseDto>> ListarProdutosMaisVendidosAsync()
         {
-            var itens =
-                await _pedidoRepository
-                    .ListarItensPedidoAsync();
+            var itens = await _pedidoRepository.ListarItensPedidoAsync();
 
-            var produtosMaisVendidos = itens
-                .GroupBy(item => item.Produto.Nome)
-                .Select(grupo => new
+            return itens
+                .GroupBy(item => new
                 {
-                    Produto = grupo.Key,
-
-                    QuantidadeVendida = grupo.Sum(
-                        item => item.Quantidade
-                    )
+                    item.ProdutoId,
+                    item.Produto.Nome
                 })
-                .OrderByDescending(
-                    produto => produto.QuantidadeVendida
-                )
+                .Select(grupo => new ProdutoMaisVendidoResponseDto
+                {
+                    ProdutoId = grupo.Key.ProdutoId,
+                    Produto = grupo.Key.Nome,
+                    QuantidadeVendida = grupo.Sum(item => item.Quantidade),
+                    ValorTotalVendido = grupo.Sum(item => item.Quantidade * item.PrecoUnitario)
+                })
+                .OrderByDescending(produto => produto.QuantidadeVendida)
+                .ToList();
+        }
+
+        private static PedidoResponseDto MapearParaResponseDto(Pedido pedido)
+        {
+            var itens = pedido.Itens
+                .Select(item => new ItemPedidoResponseDto
+                {
+                    Id = item.Id,
+                    ProdutoId = item.ProdutoId,
+                    Produto = item.Produto?.Nome ?? string.Empty,
+                    Categoria = item.Produto?.Categoria?.Nome ?? string.Empty,
+                    Quantidade = item.Quantidade,
+                    PrecoUnitario = item.PrecoUnitario,
+                    TotalItem = item.Quantidade * item.PrecoUnitario
+                })
                 .ToList();
 
-            return produtosMaisVendidos;
+            return new PedidoResponseDto
+            {
+                Id = pedido.Id,
+                DataPedido = pedido.DataPedido,
+                Itens = itens,
+                TotalPedido = itens.Sum(item => item.TotalItem)
+            };
         }
     }
 }

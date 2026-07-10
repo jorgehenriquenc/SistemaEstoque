@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SistemaEstoque.Api.Dtos.Relatorios;
 using SistemaEstoque.Api.Services;
-using System.Threading.Tasks;
 
 namespace SistemaEstoque.Api.Controllers
 {
@@ -12,20 +12,16 @@ namespace SistemaEstoque.Api.Controllers
     {
         private readonly PedidoService _pedidoService;
 
-        public RelatoriosController(
-            PedidoService pedidoService)
+        public RelatoriosController(PedidoService pedidoService)
         {
             _pedidoService = pedidoService;
         }
 
-        // GET: api/Relatorios/produtos-mais-vendidos
         [HttpGet("produtos-mais-vendidos")]
-        public async Task<IActionResult>
-            ListarProdutosMaisVendidos()
+        [ProducesResponseType(typeof(List<ProdutoMaisVendidoResponseDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<ProdutoMaisVendidoResponseDto>>> ListarProdutosMaisVendidos()
         {
-            var produtosMaisVendidos =
-                await _pedidoService
-                    .ListarProdutosMaisVendidosAsync();
+            var produtosMaisVendidos = await _pedidoService.ListarProdutosMaisVendidosAsync();
 
             return Ok(produtosMaisVendidos);
         }

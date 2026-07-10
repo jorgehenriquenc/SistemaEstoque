@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SistemaEstoque.Api.Dtos.Pedidos;
 using SistemaEstoque.Api.Services;
-using System.Threading.Tasks;
 
 namespace SistemaEstoque.Api.Controllers
 {
@@ -13,84 +12,54 @@ namespace SistemaEstoque.Api.Controllers
     {
         private readonly PedidoService _pedidoService;
 
-        public PedidosController(
-            PedidoService pedidoService)
+        public PedidosController(PedidoService pedidoService)
         {
             _pedidoService = pedidoService;
         }
 
-        // GET: api/Pedidos
         [HttpGet]
-        public async Task<IActionResult> ListarPedidos()
+        [ProducesResponseType(typeof(List<PedidoResponseDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<PedidoResponseDto>>> ListarPedidos()
         {
-            var pedidos =
-                await _pedidoService.ListarPedidosAsync();
+            var pedidos = await _pedidoService.ListarPedidosAsync();
 
             return Ok(pedidos);
         }
 
-        // GET: api/Pedidos/1
         [HttpGet("{id:int}")]
-        public async Task<IActionResult> BuscarPedidoPorId(
-            int id)
+        [ProducesResponseType(typeof(PedidoResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<PedidoResponseDto>> BuscarPedidoPorId(int id)
         {
-            var pedido =
-                await _pedidoService
-                    .BuscarPedidoPorIdAsync(id);
-
-            if (pedido is null)
-            {
-                return NotFound(
-                    "Pedido não encontrado."
-                );
-            }
+            var pedido = await _pedidoService.BuscarPedidoPorIdAsync(id);
 
             return Ok(pedido);
         }
 
-        // POST: api/Pedidos
         [HttpPost]
-        public async Task<IActionResult> RegistrarPedido(
+        [ProducesResponseType(typeof(PedidoResponseDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<PedidoResponseDto>> RegistrarPedido(
             [FromBody] PedidoCreateDto pedidoDto)
         {
-            var resultado =
-                await _pedidoService
-                    .RegistrarPedidoAsync(pedidoDto);
-
-            if (resultado.Pedido is null)
-            {
-                return BadRequest(resultado.Erro);
-            }
+            var pedido = await _pedidoService.RegistrarPedidoAsync(pedidoDto);
 
             return CreatedAtAction(
                 nameof(BuscarPedidoPorId),
-                new { id = resultado.Pedido.Id },
-                new
-                {
-                    resultado.Pedido.Id,
-                    resultado.Pedido.DataPedido
-                }
+                new { id = pedido.Id },
+                pedido
             );
         }
 
-        // DELETE: api/Pedidos/1
         [HttpDelete("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> CancelarPedido(int id)
         {
-            var cancelado =
-                await _pedidoService
-                    .CancelarPedidoAsync(id);
+            await _pedidoService.CancelarPedidoAsync(id);
 
-            if (!cancelado)
-            {
-                return NotFound(
-                    "Pedido não encontrado."
-                );
-            }
-
-            return Ok(
-                "Pedido cancelado e estoque devolvido com sucesso."
-            );
+            return NoContent();
         }
     }
 }

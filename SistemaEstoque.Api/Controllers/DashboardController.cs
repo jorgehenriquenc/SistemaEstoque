@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SistemaEstoque.Api.Dtos.Dashboard;
 using SistemaEstoque.Api.Services;
-using System.Threading.Tasks;
 
 namespace SistemaEstoque.Api.Controllers
 {
@@ -12,19 +12,16 @@ namespace SistemaEstoque.Api.Controllers
     {
         private readonly PedidoService _pedidoService;
 
-        public DashboardController(
-            PedidoService pedidoService)
+        public DashboardController(PedidoService pedidoService)
         {
             _pedidoService = pedidoService;
         }
 
-        // GET: api/Dashboard
         [HttpGet]
-        public async Task<IActionResult> ExibirDashboard()
+        [ProducesResponseType(typeof(DashboardResponseDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<DashboardResponseDto>> ExibirDashboard()
         {
-            var dashboard =
-                await _pedidoService
-                    .ExibirDashboardAsync();
+            var dashboard = await _pedidoService.ExibirDashboardAsync();
 
             return Ok(dashboard);
         }

@@ -19,6 +19,8 @@ namespace SistemaEstoque.Data.Repositories.Implementations
         public async Task<List<Categoria>> ListarTodasAsync()
         {
             return await _context.Categorias
+                .AsNoTracking()
+                .OrderBy(categoria => categoria.Nome)
                 .ToListAsync();
         }
 
@@ -27,6 +29,19 @@ namespace SistemaEstoque.Data.Repositories.Implementations
         {
             return await _context.Categorias
                 .FirstOrDefaultAsync(categoria => categoria.Id == id);
+        }
+
+        // Verifica se já existe categoria com o mesmo nome.
+        public async Task<bool> NomeExisteAsync(string nome, int? idIgnorado = null)
+        {
+            var nomeNormalizado = nome.Trim().ToLower();
+
+            return await _context.Categorias
+                .AsNoTracking()
+                .AnyAsync(categoria =>
+                    categoria.Nome.ToLower() == nomeNormalizado &&
+                    (!idIgnorado.HasValue || categoria.Id != idIgnorado.Value)
+                );
         }
 
         // Cadastra uma nova categoria.
@@ -40,8 +55,6 @@ namespace SistemaEstoque.Data.Repositories.Implementations
         // Atualiza uma categoria existente.
         public async Task AtualizarAsync(Categoria categoria)
         {
-            _context.Categorias.Update(categoria);
-
             await _context.SaveChangesAsync();
         }
 
@@ -57,6 +70,7 @@ namespace SistemaEstoque.Data.Repositories.Implementations
         public async Task<bool> PossuiProdutosAsync(int categoriaId)
         {
             return await _context.Produtos
+                .AsNoTracking()
                 .AnyAsync(produto => produto.CategoriaId == categoriaId);
         }
     }

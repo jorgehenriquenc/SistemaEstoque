@@ -11,6 +11,9 @@ namespace SistemaEstoque.Data.Repositories.Interfaces
         // Busca uma categoria pelo identificador.
         Task<Categoria?> BuscarPorIdAsync(int id);
 
+        // Verifica se já existe categoria com o mesmo nome.
+        Task<bool> NomeExisteAsync(string nome, int? idIgnorado = null);
+
         // Cadastra uma nova categoria.
         Task CadastrarAsync(Categoria categoria);
 

@@ -12,9 +12,17 @@ namespace SistemaEstoque.Data.Repositories.Interfaces
         Task<Produto?> BuscarPorIdAsync(int id);
 
         // Busca uma categoria pelo identificador.
-        Task<Categoria?> BuscarCategoriaPorIdAsync(
-            int categoriaId
+        Task<Categoria?> BuscarCategoriaPorIdAsync(int categoriaId);
+
+        // Verifica se já existe produto com o mesmo nome dentro da mesma categoria.
+        Task<bool> ProdutoExisteNaCategoriaAsync(
+            string nome,
+            int categoriaId,
+            int? idIgnorado = null
         );
+
+        // Verifica se o produto já foi usado em algum pedido.
+        Task<bool> ProdutoPossuiPedidosAsync(int produtoId);
 
         // Cadastra um produto.
         Task CadastrarAsync(Produto produto);

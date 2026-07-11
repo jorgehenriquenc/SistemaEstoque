@@ -12,60 +12,41 @@ namespace SistemaEstoque.Api.Controllers
     {
         private readonly ProdutoService _produtoService;
 
-        public ProdutosController(
-            ProdutoService produtoService)
+        public ProdutosController(ProdutoService produtoService)
         {
             _produtoService = produtoService;
         }
 
         // GET: api/Produtos
         [HttpGet]
-        [ProducesResponseType(
-            typeof(List<ProdutoResponseDto>),
-            StatusCodes.Status200OK)]
-        public async Task<
-            ActionResult<List<ProdutoResponseDto>>>
-            ListarProdutos()
+        [ProducesResponseType(typeof(List<ProdutoResponseDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<ProdutoResponseDto>>> ListarProdutos()
         {
-            var produtos =
-                await _produtoService.ListarProdutosAsync();
+            var produtos = await _produtoService.ListarProdutosAsync();
 
             return Ok(produtos);
         }
 
         // GET: api/Produtos/1
         [HttpGet("{id:int}")]
-        [ProducesResponseType(
-            typeof(ProdutoResponseDto),
-            StatusCodes.Status200OK)]
-        [ProducesResponseType(
-            typeof(ProblemDetails),
-            StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ProdutoResponseDto>>
-            BuscarProdutoPorId(int id)
+        [ProducesResponseType(typeof(ProdutoResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ProdutoResponseDto>> BuscarProdutoPorId(int id)
         {
-            var produto =
-                await _produtoService
-                    .BuscarProdutoPorIdAsync(id);
+            var produto = await _produtoService.BuscarProdutoPorIdAsync(id);
 
             return Ok(produto);
         }
 
         // POST: api/Produtos
         [HttpPost]
-        [ProducesResponseType(
-            typeof(ProdutoResponseDto),
-            StatusCodes.Status201Created)]
-        [ProducesResponseType(
-            typeof(ProblemDetails),
-            StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<ProdutoResponseDto>>
-            CadastrarProduto(
-                [FromBody] ProdutoCreateDto produtoDto)
+        [ProducesResponseType(typeof(ProdutoResponseDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+        public async Task<ActionResult<ProdutoResponseDto>> CadastrarProduto(
+            [FromBody] ProdutoCreateDto produtoDto)
         {
-            var produto =
-                await _produtoService
-                    .CadastrarProdutoAsync(produtoDto);
+            var produto = await _produtoService.CadastrarProdutoAsync(produtoDto);
 
             return CreatedAtAction(
                 nameof(BuscarProdutoPorId),
@@ -76,42 +57,30 @@ namespace SistemaEstoque.Api.Controllers
 
         // PUT: api/Produtos/1
         [HttpPut("{id:int}")]
-        [ProducesResponseType(
-            typeof(ProdutoResponseDto),
-            StatusCodes.Status200OK)]
-        [ProducesResponseType(
-            typeof(ProblemDetails),
-            StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(
-            typeof(ProblemDetails),
-            StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ProdutoResponseDto>>
-            AtualizarProduto(
-                int id,
-                [FromBody] ProdutoUpdateDto produtoDto)
+        [ProducesResponseType(typeof(ProdutoResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+        public async Task<ActionResult<ProdutoResponseDto>> AtualizarProduto(
+            int id,
+            [FromBody] ProdutoUpdateDto produtoDto)
         {
-            var produto =
-                await _produtoService
-                    .AtualizarProdutoAsync(
-                        id,
-                        produtoDto
-                    );
+            var produto = await _produtoService.AtualizarProdutoAsync(
+                id,
+                produtoDto
+            );
 
             return Ok(produto);
         }
 
         // DELETE: api/Produtos/1
         [HttpDelete("{id:int}")]
-        [ProducesResponseType(
-            StatusCodes.Status204NoContent)]
-        [ProducesResponseType(
-            typeof(ProblemDetails),
-            StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> RemoverProduto(
-            int id)
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> RemoverProduto(int id)
         {
-            await _produtoService
-                .RemoverProdutoAsync(id);
+            await _produtoService.RemoverProdutoAsync(id);
 
             return NoContent();
         }

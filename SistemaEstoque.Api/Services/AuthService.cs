@@ -13,6 +13,11 @@ namespace SistemaEstoque.Api.Services
     // Serviço responsável pelo cadastro, login e geração do token JWT.
     public class AuthService
     {
+        private const int SaltSize = 16;
+        private const int HashSize = 32;
+        private const int Iterations = 100000;
+        private const int TokenExpirationHours = 2;
+
         private readonly IUsuarioRepository _usuarioRepository;
         private readonly IConfiguration _configuration;
 
@@ -29,23 +34,17 @@ namespace SistemaEstoque.Api.Services
         {
             if (string.IsNullOrWhiteSpace(dto.Nome))
             {
-                throw new BusinessValidationException(
-                    "O nome é obrigatório."
-                );
+                throw new BusinessValidationException("O nome é obrigatório.");
             }
 
             if (string.IsNullOrWhiteSpace(dto.Email))
             {
-                throw new BusinessValidationException(
-                    "O email é obrigatório."
-                );
+                throw new BusinessValidationException("O email é obrigatório.");
             }
 
             if (string.IsNullOrWhiteSpace(dto.Senha))
             {
-                throw new BusinessValidationException(
-                    "A senha é obrigatória."
-                );
+                throw new BusinessValidationException("A senha é obrigatória.");
             }
 
             if (dto.Senha.Length < 6)
@@ -56,14 +55,9 @@ namespace SistemaEstoque.Api.Services
             }
 
             var nome = dto.Nome.Trim();
+            var email = NormalizarEmail(dto.Email);
 
-            var email = dto.Email
-                .Trim()
-                .ToLowerInvariant();
-
-            var emailExiste =
-                await _usuarioRepository
-                    .EmailExisteAsync(email);
+            var emailExiste = await _usuarioRepository.EmailExisteAsync(email);
 
             if (emailExiste)
             {
@@ -79,8 +73,7 @@ namespace SistemaEstoque.Api.Services
                 SenhaHash = GerarHashSenha(dto.Senha)
             };
 
-            await _usuarioRepository
-                .CadastrarAsync(usuario);
+            await _usuarioRepository.CadastrarAsync(usuario);
         }
 
         // Realiza o login e retorna os dados do usuário com o token.
@@ -88,43 +81,28 @@ namespace SistemaEstoque.Api.Services
         {
             if (string.IsNullOrWhiteSpace(dto.Email))
             {
-                throw new BusinessValidationException(
-                    "O email é obrigatório."
-                );
+                throw new BusinessValidationException("O email é obrigatório.");
             }
 
             if (string.IsNullOrWhiteSpace(dto.Senha))
             {
-                throw new BusinessValidationException(
-                    "A senha é obrigatória."
-                );
+                throw new BusinessValidationException("A senha é obrigatória.");
             }
 
-            var email = dto.Email
-                .Trim()
-                .ToLowerInvariant();
+            var email = NormalizarEmail(dto.Email);
 
-            var usuario =
-                await _usuarioRepository
-                    .BuscarPorEmailAsync(email);
+            var usuario = await _usuarioRepository.BuscarPorEmailAsync(email);
 
             if (usuario is null)
             {
-                throw new InvalidCredentialsException(
-                    "Email ou senha inválidos."
-                );
+                throw new InvalidCredentialsException("Email ou senha inválidos.");
             }
 
-            var senhaValida = VerificarSenha(
-                dto.Senha,
-                usuario.SenhaHash
-            );
+            var senhaValida = VerificarSenha(dto.Senha, usuario.SenhaHash);
 
             if (!senhaValida)
             {
-                throw new InvalidCredentialsException(
-                    "Email ou senha inválidos."
-                );
+                throw new InvalidCredentialsException("Email ou senha inválidos.");
             }
 
             var token = GerarToken(usuario);
@@ -135,6 +113,14 @@ namespace SistemaEstoque.Api.Services
                 Email = usuario.Email,
                 Token = token
             };
+        }
+
+        // Normaliza o email para evitar duplicidade por diferença de maiúsculas/minúsculas.
+        private static string NormalizarEmail(string email)
+        {
+            return email
+                .Trim()
+                .ToLowerInvariant();
         }
 
         // Gera o token JWT do usuário autenticado.
@@ -167,18 +153,9 @@ namespace SistemaEstoque.Api.Services
 
             var claims = new List<Claim>
             {
-                new(
-                    ClaimTypes.NameIdentifier,
-                    usuario.Id.ToString()
-                ),
-                new(
-                    ClaimTypes.Name,
-                    usuario.Nome
-                ),
-                new(
-                    ClaimTypes.Email,
-                    usuario.Email
-                )
+                new(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
+                new(ClaimTypes.Name, usuario.Nome),
+                new(ClaimTypes.Email, usuario.Email)
             };
 
             var chave = new SymmetricSecurityKey(
@@ -194,32 +171,27 @@ namespace SistemaEstoque.Api.Services
                 issuer: issuer,
                 audience: audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddHours(2),
+                expires: DateTime.UtcNow.AddHours(TokenExpirationHours),
                 signingCredentials: credenciais
             );
 
-            return new JwtSecurityTokenHandler()
-                .WriteToken(token);
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
         // Cria um hash seguro para a senha.
         private static string GerarHashSenha(string senha)
         {
-            var salt =
-                RandomNumberGenerator.GetBytes(16);
+            var salt = RandomNumberGenerator.GetBytes(SaltSize);
 
-            using var pbkdf2 =
-                new Rfc2898DeriveBytes(
-                    senha,
-                    salt,
-                    100000,
-                    HashAlgorithmName.SHA256
-                );
+            var hash = Rfc2898DeriveBytes.Pbkdf2(
+                password: senha,
+                salt: salt,
+                iterations: Iterations,
+                hashAlgorithm: HashAlgorithmName.SHA256,
+                outputLength: HashSize
+            );
 
-            var hash = pbkdf2.GetBytes(32);
-
-            return $"{Convert.ToBase64String(salt)}." +
-                   $"{Convert.ToBase64String(hash)}";
+            return $"{Convert.ToBase64String(salt)}.{Convert.ToBase64String(hash)}";
         }
 
         // Compara a senha informada com o hash armazenado.
@@ -236,28 +208,26 @@ namespace SistemaEstoque.Api.Services
 
             try
             {
-                var salt =
-                    Convert.FromBase64String(partes[0]);
+                var salt = Convert.FromBase64String(partes[0]);
+                var hashSalvo = Convert.FromBase64String(partes[1]);
 
-                var hashSalvo =
-                    Convert.FromBase64String(partes[1]);
+                if (salt.Length != SaltSize || hashSalvo.Length != HashSize)
+                {
+                    return false;
+                }
 
-                using var pbkdf2 =
-                    new Rfc2898DeriveBytes(
-                        senha,
-                        salt,
-                        100000,
-                        HashAlgorithmName.SHA256
-                    );
+                var hashDigitado = Rfc2898DeriveBytes.Pbkdf2(
+                    password: senha,
+                    salt: salt,
+                    iterations: Iterations,
+                    hashAlgorithm: HashAlgorithmName.SHA256,
+                    outputLength: HashSize
+                );
 
-                var hashDigitado =
-                    pbkdf2.GetBytes(32);
-
-                return CryptographicOperations
-                    .FixedTimeEquals(
-                        hashSalvo,
-                        hashDigitado
-                    );
+                return CryptographicOperations.FixedTimeEquals(
+                    hashSalvo,
+                    hashDigitado
+                );
             }
             catch (FormatException)
             {

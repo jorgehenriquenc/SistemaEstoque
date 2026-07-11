@@ -2,14 +2,12 @@
 
 namespace SistemaEstoque.Api.Exceptions
 {
-    // Responsável por tratar exceções não capturadas
-    // e convertê-las em respostas HTTP padronizadas.
+    // Responsável por converter exceções da aplicação em respostas HTTP padronizadas.
     public sealed class GlobalExceptionHandler : IExceptionHandler
     {
         private readonly ILogger<GlobalExceptionHandler> _logger;
 
-        public GlobalExceptionHandler(
-            ILogger<GlobalExceptionHandler> logger)
+        public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger)
         {
             _logger = logger;
         }
@@ -19,11 +17,7 @@ namespace SistemaEstoque.Api.Exceptions
             Exception exception,
             CancellationToken cancellationToken)
         {
-            var (
-                statusCode,
-                titulo,
-                detalhe
-            ) = exception switch
+            var (statusCode, titulo, detalhe) = exception switch
             {
                 BusinessValidationException => (
                     StatusCodes.Status400BadRequest,
@@ -49,6 +43,12 @@ namespace SistemaEstoque.Api.Exceptions
                     exception.Message
                 ),
 
+                InvalidOperationException => (
+                    StatusCodes.Status500InternalServerError,
+                    "Erro de configuração",
+                    "A aplicação não está configurada corretamente."
+                ),
+
                 _ => (
                     StatusCodes.Status500InternalServerError,
                     "Erro interno do servidor",
@@ -56,11 +56,7 @@ namespace SistemaEstoque.Api.Exceptions
                 )
             };
 
-            RegistrarErro(
-                httpContext,
-                exception,
-                statusCode
-            );
+            RegistrarErro(httpContext, exception, statusCode);
 
             await Results.Problem(
                 statusCode: statusCode,
@@ -73,8 +69,6 @@ namespace SistemaEstoque.Api.Exceptions
                 }
             ).ExecuteAsync(httpContext);
 
-            // Retorna true para informar que a exceção
-            // já foi tratada por este handler.
             return true;
         }
 
@@ -83,12 +77,11 @@ namespace SistemaEstoque.Api.Exceptions
             Exception exception,
             int statusCode)
         {
-            if (statusCode ==
-                StatusCodes.Status500InternalServerError)
+            if (statusCode == StatusCodes.Status500InternalServerError)
             {
                 _logger.LogError(
                     exception,
-                    "Erro interno não tratado. TraceId: {TraceId}",
+                    "Erro interno. TraceId: {TraceId}",
                     httpContext.TraceIdentifier
                 );
 
@@ -96,8 +89,7 @@ namespace SistemaEstoque.Api.Exceptions
             }
 
             _logger.LogWarning(
-                "Erro tratado do tipo {TipoExcecao}. " +
-                "Mensagem: {Mensagem}. TraceId: {TraceId}",
+                "Erro tratado do tipo {TipoExcecao}. Mensagem: {Mensagem}. TraceId: {TraceId}",
                 exception.GetType().Name,
                 exception.Message,
                 httpContext.TraceIdentifier

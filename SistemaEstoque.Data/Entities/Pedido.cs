@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace SistemaEstoque.Data.Entities
+﻿namespace SistemaEstoque.Data.Entities
 {
+    // Representa uma venda/pedido realizado no sistema.
     public class Pedido
     {
         // Identificador único do pedido.

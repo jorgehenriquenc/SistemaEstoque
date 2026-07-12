@@ -64,6 +64,17 @@ namespace SistemaEstoque.Data.Repositories.Implementations
 
             try
             {
+                foreach (var item in pedido.Itens)
+                {
+                    var produto = await _context.Produtos
+                        .FirstOrDefaultAsync(produto => produto.Id == item.ProdutoId);
+
+                    if (produto is not null && item.Produto is not null)
+                    {
+                        produto.QuantidadeEmEstoque = item.Produto.QuantidadeEmEstoque;
+                    }
+                }
+
                 _context.Pedidos.Remove(pedido);
 
                 await _context.SaveChangesAsync();
